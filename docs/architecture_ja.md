@@ -11,7 +11,7 @@ Terraform によるIaCでプロビジョニングする。
 - VPC 自動作成または既存 VPC を利用
 - Security Group による IP 制限でアクセス制御
 - ALB + ACM 証明書による HTTPS 対応（オプション）
-- NAT Gateway 不使用、VPC Endpoints で AWS サービスにアクセス
+- 既定では NAT Gateway 不使用。AWS サービスへは VPC Endpoints でアクセスし、外部 API egress が必要な場合のみ NAT Gateway を有効化
 - コンテナイメージは ECR から取得（事前に push が必要）
 - ARM64 (Graviton) でコスト効率化
 - シンプル構成を優先
@@ -30,7 +30,8 @@ Internet
 ┌─────────────── VPC (自動作成または既存) ──────────────┐
 │                                                        │
 │  Public Subnet                                         │
-│  └─ ECS Service: Langfuse Web (Public IP, 単一タスク)  │
+│  ├─ ECS Service: Langfuse Web (Public IP, 単一タスク)  │
+│  └─ NAT Gateway (オプション、外部 API egress)          │
 │                                                        │
 │  Private Subnets                                       │
 │  ├─ ECS Service: Langfuse Worker (スケール可能)        │
@@ -52,7 +53,8 @@ Internet
 ┌─────────────── VPC (自動作成または既存) ──────────────┐
 │                                                        │
 │  Public Subnet                                         │
-│  └─ ALB (Application Load Balancer)                    │
+│  ├─ ALB (Application Load Balancer)                    │
+│  └─ NAT Gateway (オプション、外部 API egress)          │
 │                                                        │
 │  Private Subnets                                       │
 │  ├─ ECS Service: Langfuse Web (ALB 経由)               │
@@ -108,9 +110,9 @@ Internet
 
 - VPC Gateway Endpoint 経由でアクセス
 
-### VPC Endpoints（NAT Gateway 不要）
+### VPC Endpoints とオプションの NAT Gateway
 
-Private Subnet から AWS サービスへのアクセスには NAT Gateway ではなく VPC Endpoints を使用:
+既定では、Private Subnet から AWS サービスへのアクセスには NAT Gateway ではなく VPC Endpoints を使用:
 
 | Endpoint | タイプ | 用途 |
 |---|---|---|
@@ -119,6 +121,8 @@ Private Subnet から AWS サービスへのアクセスには NAT Gateway で�
 | CloudWatch Logs | Interface | ECS タスクからのログ配信 |
 | Secrets Manager | Interface | ECS タスクのシークレット取得 |
 | S3 | Gateway | Blob ストレージアクセス（追加コストなし） |
+
+Langfuse Worker が LLM-as-a-Judge evaluator で OpenAI / Anthropic など外部 LLM API を呼び出す場合は、`enable_nat_gateway = true` を設定する。この NAT Gateway 作成は、この module が VPC を作成する場合のみ有効。既存 VPC 利用時は既存 VPC 側で NAT / routing を用意する。
 
 ---
 
@@ -341,6 +345,7 @@ infra/
 | `public_subnet_ids` | `list(string)` | Public Subnet IDs (vpc_id 指定時は必須) |
 | `private_subnet_ids` | `list(string)` | Private Subnet IDs (vpc_id 指定時は必須) |
 | `vpc_cidr` | `string` | 自動作成 VPC の CIDR (default: `10.0.0.0/16`) |
+| `enable_nat_gateway` | `bool` | Private Subnet から外部インターネットへ出るための NAT Gateway を追加 (default: `false`, VPC 自動作成時のみ) |
 | `allowed_cidrs` | `list(string)` | アクセス許可 CIDR リスト |
 | `allowed_security_group_ids` | `list(string)` | ALB への HTTPS アクセスのみを許可するセキュリティグループ ID（内部 AWS サービスからの tracing API 用、default: `[]`） |
 | `langfuse_web_image` | `string` | Langfuse Web の ECR イメージ URL |

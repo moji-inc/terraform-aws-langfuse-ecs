@@ -40,6 +40,12 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "enable_nat_gateway" {
+  description = "Add a NAT Gateway so private subnets can reach the internet (e.g., for LLM-as-a-Judge calling external OpenAI/Anthropic APIs). Only applies when this module creates the VPC."
+  type        = bool
+  default     = false
+}
+
 variable "exclude_az_ids" {
   description = "AZ IDs to exclude (used only when ecs_cpu_architecture is ARM64)"
   type        = list(string)

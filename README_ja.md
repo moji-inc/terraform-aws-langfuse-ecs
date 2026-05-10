@@ -13,7 +13,7 @@ AWS ECS Fargate 上に Langfuse v3 をセルフホスティングするための
 - **VPC 自動作成または既存 VPC 利用** - 柔軟なネットワーク構成
 - **セキュアなアクセス制御** - ALB 経由の IP 制限および/またはセキュリティグループベースのアクセス
 - **データ永続化** - ClickHouse データは EFS に永続化
-- **コスト最適化** - S3 Intelligent-Tiering、VPC Endpoint 経由のアクセス（NAT Gateway 不要）
+- **コスト最適化** - S3 Intelligent-Tiering、VPC Endpoint 経由のアクセス、外部 LLM API 用の NAT Gateway はオプション
 
 ## アーキテクチャ
 
@@ -147,10 +147,10 @@ cd terraform-aws-langfuse-ecs
 ### 2. tfvars ファイルを作成
 
 ```bash
-cp tfvars/example.tfvars tfvars/dev.tfvars
+cp tfvars/example.tfvars tfvars/prod.tfvars
 ```
 
-`tfvars/dev.tfvars` を編集:
+`tfvars/prod.tfvars` を編集:
 
 ### 3. ECR リポジトリを作成（Terraform 外で事前に作成）
 
@@ -178,7 +178,7 @@ aws ecr create-repository --repository-name langfuse-dev/clickhouse --tags Key=u
 
 ### 5. tfvars ファイルを編集
 
-`tfvars/dev.tfvars` を編集:
+`tfvars/prod.tfvars` を編集:
 
 ```hcl
 # AWS Configuration
@@ -215,10 +215,10 @@ terraform init
 # export AWS_PROFILE=rd:engineering
 
 # プラン確認
-terraform plan -var-file=../tfvars/dev.tfvars
+terraform plan -var-file=../tfvars/prod.tfvars
 
 # デプロイ
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 ### 7. アクセス URL の確認
@@ -236,13 +236,13 @@ terraform output langfuse_url
 terraform output alb_dns_name
 ```
 
-出力例: `langfuse-alb-123456789.us-east-1.elb.amazonaws.com`
+出力例: `langfuse-alb-123456789.ap-northeast-1.elb.amazonaws.com`
 
 #### ALB 無効時（Public IP モード）
 
 ```bash
-# リージョンを設定（例: us-east-1）
-REGION=us-east-1
+# リージョンを設定（現在の本番環境は ap-northeast-1）
+REGION=ap-northeast-1
 
 aws ecs list-tasks --region $REGION --cluster langfuse --service-name langfuse-web --query 'taskArns[0]' --output text | \
 xargs -I {} aws ecs describe-tasks --region $REGION --cluster langfuse --tasks {} --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text | \
@@ -269,7 +269,7 @@ xargs -I {} aws ec2 describe-network-interfaces --region $REGION --network-inter
 terraform output alb_dns_name
 ```
 
-`tfvars/dev.tfvars` を編集:
+`tfvars/prod.tfvars` を編集:
 
 ```hcl
 # ALB 使用時（デフォルト）
@@ -282,7 +282,7 @@ nextauth_url = "https://<alb-dns-name>"
 再デプロイ:
 
 ```bash
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 ## 変数一覧
@@ -296,6 +296,7 @@ terraform apply -var-file=../tfvars/dev.tfvars
 | `public_subnet_ids` | Public Subnet IDs（vpc_id 指定時は必須） | `null` |
 | `private_subnet_ids` | Private Subnet IDs（vpc_id 指定時は必須） | `null` |
 | `vpc_cidr` | 新規 VPC の CIDR（VPC 自動作成時のみ使用） | `10.0.0.0/16` |
+| `enable_nat_gateway` | Private Subnet から外部インターネットへ出るための NAT Gateway を追加（VPC 自動作成時のみ） | `false` |
 | `allowed_cidrs` | アクセス許可 CIDR リスト | - |
 | `allowed_security_group_ids` | ALB への HTTPS アクセスを許可するセキュリティグループ ID（内部 AWS サービスの tracing 用） | `[]` |
 | `db_instance_class` | RDS インスタンスクラス | `db.t4g.micro` |
@@ -338,7 +339,7 @@ Terraform state を S3 に保存し、ネイティブの state ロック機能�
 ```bash
 cd bootstrap
 terraform init
-terraform apply -var="bucket_name=langfuse-infra-tf-state" -var="aws_region=us-east-1" -var="user=your-name"
+terraform apply -var="bucket_name=langfuse-infra-tf-state" -var="aws_region=ap-northeast-1" -var="user=your-name"
 ```
 
 ### 2. Backend を設定
@@ -350,7 +351,7 @@ terraform {
   backend "s3" {
     bucket       = "langfuse-infra-tf-state"
     key          = "langfuse/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "ap-northeast-1"
     use_lockfile = true  # ネイティブ S3 state ロック
     encrypt      = true
   }
@@ -368,7 +369,7 @@ terraform init -migrate-state
 
 ```bash
 cd infra
-terraform destroy -var-file=../tfvars/dev.tfvars
+terraform destroy -var-file=../tfvars/prod.tfvars
 ```
 
 **注意**: RDS の `skip_final_snapshot = true` のため、削除時にスナップショットは作成されません。本番環境では変更を検討してください。

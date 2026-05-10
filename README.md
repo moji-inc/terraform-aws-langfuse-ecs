@@ -13,7 +13,7 @@ This project provides a Terraform configuration to deploy Langfuse v3 on AWS in 
 - **Auto-create VPC or use existing** - Flexible network configuration
 - **Secure access control** - IP restriction and/or Security Group-based access via ALB
 - **Data persistence** - ClickHouse data persisted on EFS
-- **Cost optimization** - ARM64 (Graviton), S3 Intelligent-Tiering, VPC Endpoints (no NAT Gateway)
+- **Cost optimization** - ARM64 (Graviton), S3 Intelligent-Tiering, VPC Endpoints, optional NAT Gateway for external LLM APIs
 
 ## Architecture
 
@@ -147,10 +147,10 @@ cd terraform-aws-langfuse-ecs
 ### 2. Create tfvars file
 
 ```bash
-cp tfvars/example.tfvars tfvars/dev.tfvars
+cp tfvars/example.tfvars tfvars/prod.tfvars
 ```
 
-Edit `tfvars/dev.tfvars`:
+Edit `tfvars/prod.tfvars`:
 
 ```hcl
 # AWS Configuration
@@ -185,10 +185,10 @@ cd infra
 terraform init
 
 # Review plan
-terraform plan -var-file=../tfvars/dev.tfvars
+terraform plan -var-file=../tfvars/prod.tfvars
 
 # Deploy (creates ECR repositories, ECS cluster, RDS, ALB, GitHub Actions OIDC role, etc.)
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 ### 4. Push ClickHouse image to ECR
@@ -236,13 +236,13 @@ terraform output langfuse_url
 terraform output alb_dns_name
 ```
 
-Example output: `langfuse-alb-123456789.us-east-1.elb.amazonaws.com`
+Example output: `langfuse-alb-123456789.ap-northeast-1.elb.amazonaws.com`
 
 #### Without ALB (Public IP mode)
 
 ```bash
-# Set region (e.g., us-east-1)
-REGION=us-east-1
+# Set region (current production uses ap-northeast-1)
+REGION=ap-northeast-1
 
 aws ecs list-tasks --region $REGION --cluster langfuse --service-name langfuse-web --query 'taskArns[0]' --output text | \
 xargs -I {} aws ecs describe-tasks --region $REGION --cluster langfuse --tasks {} --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text | \
@@ -269,7 +269,7 @@ This is required for Langfuse authentication (login, session management) to work
 terraform output alb_dns_name
 ```
 
-Edit `tfvars/dev.tfvars`:
+Edit `tfvars/prod.tfvars`:
 
 ```hcl
 # With ALB (default)
@@ -282,7 +282,7 @@ nextauth_url = "https://<alb-dns-name>"
 Redeploy:
 
 ```bash
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 ## Variables
@@ -297,6 +297,7 @@ terraform apply -var-file=../tfvars/dev.tfvars
 | `public_subnet_ids` | Public Subnet IDs (required if vpc_id specified) | `null` |
 | `private_subnet_ids` | Private Subnet IDs (required if vpc_id specified) | `null` |
 | `vpc_cidr` | CIDR for new VPC (only used when auto-creating) | `10.0.0.0/16` |
+| `enable_nat_gateway` | Add a NAT Gateway for private subnet outbound internet access (only when auto-creating VPC) | `false` |
 | `allowed_cidrs` | Allowed CIDR list for access | - |
 | `allowed_security_group_ids` | Security group IDs allowed to access ALB via HTTPS | `[]` |
 | `langfuse_web_image` | Web container image (null = ECR `:latest`) | `null` |
@@ -347,7 +348,7 @@ Store Terraform state in S3 with native state locking (Terraform >= 1.10).
 ```bash
 cd bootstrap
 terraform init
-terraform apply -var="bucket_name=langfuse-infra-tf-state" -var="aws_region=us-east-1" -var="user=your-name"
+terraform apply -var="bucket_name=langfuse-infra-tf-state" -var="aws_region=ap-northeast-1" -var="user=your-name"
 ```
 
 ### 2. Configure backend
@@ -359,7 +360,7 @@ terraform {
   backend "s3" {
     bucket       = "langfuse-infra-tf-state"
     key          = "langfuse/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "ap-northeast-1"
     use_lockfile = true  # Native S3 state locking
     encrypt      = true
   }
@@ -377,7 +378,7 @@ terraform init -migrate-state
 
 ```bash
 cd infra
-terraform destroy -var-file=../tfvars/dev.tfvars
+terraform destroy -var-file=../tfvars/prod.tfvars
 ```
 
 **Note**:

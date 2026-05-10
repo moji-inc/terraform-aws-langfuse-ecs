@@ -7,7 +7,8 @@
 #   - 2 Private Subnets (for Worker, ClickHouse, RDS, ElastiCache)
 #   - Internet Gateway (for public subnet internet access)
 #
-# No NAT Gateway - Private subnets use VPC Endpoints for AWS service access.
+# NAT Gateway is disabled by default. Private subnets use VPC Endpoints for
+# AWS service access, and can optionally use NAT for external API egress.
 # See vpc_endpoints.tf for endpoint definitions.
 #
 # When var.vpc_id is provided, this module is skipped and existing VPC is used.
@@ -87,7 +88,7 @@ resource "aws_route_table_association" "public" {
 # =============================================================================
 # Private Subnets
 # =============================================================================
-# No NAT Gateway required - using VPC Endpoints for AWS service access:
+# NAT Gateway is optional. By default, VPC Endpoints are used for AWS service access:
 #   - ECR API/DKR: Container image pull
 #   - CloudWatch Logs: Log delivery
 #   - Secrets Manager: Secret retrieval
@@ -111,7 +112,7 @@ resource "aws_route_table" "private" {
 
   vpc_id = aws_vpc.main[0].id
 
-  # No default route to NAT Gateway - all AWS service access via VPC Endpoints
+  # No default route by default. aws_route.private_nat adds one when NAT is enabled.
 
   tags = {
     Name = "${var.service_name}-private-rt"
@@ -123,4 +124,48 @@ resource "aws_route_table_association" "private" {
 
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[0].id
+}
+
+# =============================================================================
+# NAT Gateway (optional)
+# =============================================================================
+# When enable_nat_gateway is true, private subnets can reach the internet via
+# a NAT Gateway in the first public subnet. This is required for outbound calls
+# to external LLM APIs (OpenAI/Anthropic/Vertex) used by LLM-as-a-Judge
+# evaluators.
+# =============================================================================
+
+locals {
+  enable_nat   = local.create_vpc && var.enable_nat_gateway
+  nat_gw_count = local.enable_nat && length(local.azs) > 0 ? 1 : 0
+}
+
+resource "aws_eip" "nat" {
+  count  = local.nat_gw_count
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.service_name}-nat-eip-${count.index}"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+resource "aws_nat_gateway" "main" {
+  count         = local.nat_gw_count
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+
+  tags = {
+    Name = "${var.service_name}-nat-${count.index}"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
+resource "aws_route" "private_nat" {
+  count                  = local.nat_gw_count > 0 ? 1 : 0
+  route_table_id         = aws_route_table.private[0].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main[0].id
 }

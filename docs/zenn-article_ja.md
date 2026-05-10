@@ -53,7 +53,7 @@ Langfuse 公式では [langfuse-terraform-aws](https://github.com/langfuse/langf
 | データベース | Aurora PostgreSQL | RDS PostgreSQL |
 | CPU アーキテクチャ | x86_64 / ARM64 | ARM64 (Graviton) |
 | ドメイン/証明書 | 必須 | オプション（自己署名証明書対応） |
-| VPC の外部通信 | NAT Gateway | VPC Endpoints |
+| VPC の外部通信 | NAT Gateway | 既定では VPC Endpoints、必要時のみ NAT Gateway |
 | 想定用途 | 本番環境 | 開発/検証/小〜中規模本番 |
 | 運用スキル | Kubernetes 必要 | 不要 |
 | 月額コスト目安 | [約$450〜](https://www.gao-ai.com/post/langfuse-on-aws-with-terraform) | 約$130〜 |
@@ -73,7 +73,7 @@ ECS Fargate を採用し、コンテナのオーケストレーションを AWS 
 
 - **RDS PostgreSQL**: Aurora より低コスト
 - **ARM64 (Graviton)**: x86_64 比で約20%のコスト削減
-- **VPC Endpoints**: NAT Gateway 不要で固定費を削減
+- **VPC Endpoints**: 既定では NAT Gateway を作成せず固定費を削減
 - **S3 Intelligent-Tiering**: ストレージコストを自動最適化
 
 ## アーキテクチャ概要
@@ -121,16 +121,16 @@ flowchart TB
 
 ClickHouse への接続には AWS Cloud Map（ECS Service Discovery）を使用しています。`clickhouse.langfuse.local` という内部 DNS 名で名前解決され、ECS タスクの再起動時も自動的に DNS レコードが更新されます。
 
-#### VPC Endpoints で NAT Gateway 不要
+#### 既定では VPC Endpoints、必要時のみ NAT Gateway
 
-Private Subnet から AWS サービスへのアクセスには VPC Endpoints を使用しています：
+Private Subnet から AWS サービスへのアクセスには既定で VPC Endpoints を使用しています：
 
 - ECR（コンテナイメージ取得）
 - CloudWatch Logs（ログ配信）
 - Secrets Manager（シークレット取得）
 - S3（Blob ストレージ）
 
-NAT Gateway の月額固定費（約 $45/月）+ データ処理料金を削減できます。
+既定では NAT Gateway の月額固定費（約 $45/月）+ データ処理料金を削減できます。Langfuse Worker が LLM-as-a-Judge で OpenAI / Anthropic など外部 API を呼び出す場合は、オプションの NAT Gateway を有効化します。
 
 #### ARM64 (Graviton) でコスト最適化
 
@@ -152,8 +152,8 @@ git clone https://github.com/myui/terraform-aws-langfuse-ecs.git
 cd terraform-aws-langfuse-ecs
 
 # 2. tfvars ファイルを作成
-cp tfvars/example.tfvars tfvars/dev.tfvars
-# tfvars/dev.tfvars を編集
+cp tfvars/example.tfvars tfvars/prod.tfvars
+# tfvars/prod.tfvars を編集
 
 # 3. ECR リポジトリを作成
 aws ecr create-repository --repository-name langfuse-dev/web
@@ -166,7 +166,7 @@ aws ecr create-repository --repository-name langfuse-dev/clickhouse
 # 5. Terraform 実行
 cd infra
 terraform init
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 詳細な手順は [README](https://github.com/myui/terraform-aws-langfuse-ecs) を参照してください。
@@ -174,7 +174,7 @@ terraform apply -var-file=../tfvars/dev.tfvars
 ### 設定例
 
 ```hcl
-# tfvars/dev.tfvars
+# tfvars/prod.tfvars
 aws_region   = "ap-northeast-1"
 service_name = "langfuse"
 user         = "your-name"
@@ -201,7 +201,7 @@ allowed_cidrs = ["203.0.113.0/24"]
 ### RDS インスタンスクラスの変更
 
 ```hcl
-# tfvars/dev.tfvars
+# tfvars/prod.tfvars
 db_instance_class = "db.t4g.small"  # micro → small
 db_multi_az       = true             # 高可用性が必要な場合
 ```

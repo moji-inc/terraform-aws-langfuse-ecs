@@ -4,7 +4,7 @@
 
 ### Terraform 経由（推奨）
 
-1. `tfvars/dev.tfvars` を編集:
+1. `tfvars/prod.tfvars` を編集:
 
 ```hcl
 db_instance_class = "db.t4g.small"  # db.t4g.micro から変更
@@ -14,8 +14,8 @@ db_instance_class = "db.t4g.small"  # db.t4g.micro から変更
 
 ```bash
 cd infra
-terraform plan -var-file=../tfvars/dev.tfvars
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform plan -var-file=../tfvars/prod.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 **注意**: インスタンスクラス変更にはダウンタイムが発生します（通常 5〜15 分）。
@@ -82,7 +82,7 @@ allocated_storage = 50  # GB
 
 ### Terraform 経由
 
-1. `tfvars/dev.tfvars` を編集:
+1. `tfvars/prod.tfvars` を編集:
 
 ```hcl
 db_multi_az = true
@@ -91,7 +91,7 @@ db_multi_az = true
 2. 適用:
 
 ```bash
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 ### AWS CLI 経由

@@ -4,7 +4,7 @@
 
 ### Via Terraform (Recommended)
 
-1. Edit `tfvars/dev.tfvars`:
+1. Edit `tfvars/prod.tfvars`:
 
 ```hcl
 db_instance_class = "db.t4g.small"  # Changed from db.t4g.micro
@@ -14,8 +14,8 @@ db_instance_class = "db.t4g.small"  # Changed from db.t4g.micro
 
 ```bash
 cd infra
-terraform plan -var-file=../tfvars/dev.tfvars
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform plan -var-file=../tfvars/prod.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 **Note**: Instance class change causes downtime (typically 5-15 minutes).
@@ -82,7 +82,7 @@ allocated_storage = 50  # GB
 
 ### Via Terraform
 
-1. Edit `tfvars/dev.tfvars`:
+1. Edit `tfvars/prod.tfvars`:
 
 ```hcl
 db_multi_az = true
@@ -91,7 +91,7 @@ db_multi_az = true
 2. Apply:
 
 ```bash
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 ### Via AWS CLI
