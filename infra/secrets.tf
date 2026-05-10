@@ -22,13 +22,11 @@ resource "random_password" "salt" {
   special = false
 }
 
-# Random encryption key (256-bit hex = 64 hex characters)
-resource "random_password" "encryption_key" {
-  length  = 64
-  special = false
-  upper   = false
-  numeric = true
-  lower   = true
+# Random encryption key (256-bit = 32 bytes, encoded as 64 hex characters).
+# Langfuse expects a hex-encoded key. Do not rotate this for an existing
+# deployment unless you have a tested data re-encryption/migration procedure.
+resource "random_id" "encryption_key" {
+  byte_length = 32
 }
 
 # Database URL secret
@@ -68,7 +66,14 @@ resource "aws_secretsmanager_secret" "encryption_key" {
 
 resource "aws_secretsmanager_secret_version" "encryption_key" {
   secret_id     = aws_secretsmanager_secret.encryption_key.id
-  secret_string = random_password.encryption_key.result
+  secret_string = random_id.encryption_key.hex
+
+  lifecycle {
+    # Existing Langfuse secrets are encrypted with this value. Ignore generated
+    # value drift so a Terraform refactor cannot accidentally rotate the key and
+    # make stored credentials impossible to decrypt.
+    ignore_changes = [secret_string]
+  }
 }
 
 # ClickHouse password secret
