@@ -205,3 +205,22 @@ variable "route53_zone_id" {
   type        = string
   default     = ""
 }
+
+# Slack integration (multi-tenant). Values come from the Slack App's Basic
+# Information page after creating the App from the manifest. Pass at apply
+# time via `TF_VAR_slack_client_id=...` / `TF_VAR_slack_client_secret=...` so
+# the values never land in tfvars files. The state secret is generated locally
+# (see secrets.tf); Slack has no equivalent input for it.
+variable "slack_client_id" {
+  description = "Slack App Client ID (from https://api.slack.com/apps → Basic Information)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "slack_client_secret" {
+  description = "Slack App Client Secret (from https://api.slack.com/apps → Basic Information)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -76,6 +76,9 @@ module "langfuse" {
   salt_arn                = aws_secretsmanager_secret.salt.arn
   encryption_key_arn      = aws_secretsmanager_secret.encryption_key.arn
   clickhouse_password_arn = aws_secretsmanager_secret.clickhouse_password.arn
+  slack_client_id_arn     = aws_secretsmanager_secret.slack_client_id.arn
+  slack_client_secret_arn = aws_secretsmanager_secret.slack_client_secret.arn
+  slack_state_secret_arn  = aws_secretsmanager_secret.slack_state_secret.arn
 
   # ALB configuration
   enable_alb                 = var.enable_alb

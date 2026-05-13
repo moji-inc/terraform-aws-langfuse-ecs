@@ -85,3 +85,47 @@ resource "aws_secretsmanager_secret_version" "clickhouse_password" {
   secret_id     = aws_secretsmanager_secret.clickhouse_password.id
   secret_string = random_password.clickhouse_password.result
 }
+
+# ---------------------------------------------------------------------------
+# Slack integration secrets
+# ---------------------------------------------------------------------------
+# Slack OAuth state secret: signs the `state` parameter Langfuse round-trips
+# through Slack during the install flow. Generated locally; never input on the
+# Slack side. Rotating breaks in-flight OAuth attempts but does not invalidate
+# stored bot tokens.
+resource "random_password" "slack_state_secret" {
+  length  = 64
+  special = false
+}
+
+# Slack Client ID (from the Slack App's Basic Information). Stored in Secrets
+# Manager and injected into the ECS task at runtime. Empty `var.slack_client_id`
+# is allowed so `terraform plan` works for environments that have not yet
+# rotated values in; the ECS task will simply fail OAuth until a non-empty
+# value is supplied via `TF_VAR_slack_client_id` and re-applied.
+resource "aws_secretsmanager_secret" "slack_client_id" {
+  name = "${var.service_name}/slack-client-id"
+}
+
+resource "aws_secretsmanager_secret_version" "slack_client_id" {
+  secret_id     = aws_secretsmanager_secret.slack_client_id.id
+  secret_string = var.slack_client_id
+}
+
+resource "aws_secretsmanager_secret" "slack_client_secret" {
+  name = "${var.service_name}/slack-client-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "slack_client_secret" {
+  secret_id     = aws_secretsmanager_secret.slack_client_secret.id
+  secret_string = var.slack_client_secret
+}
+
+resource "aws_secretsmanager_secret" "slack_state_secret" {
+  name = "${var.service_name}/slack-state-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "slack_state_secret" {
+  secret_id     = aws_secretsmanager_secret.slack_state_secret.id
+  secret_string = random_password.slack_state_secret.result
+}
