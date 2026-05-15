@@ -77,6 +77,18 @@ locals {
     {
       name      = "CLICKHOUSE_PASSWORD"
       valueFrom = var.clickhouse_password_arn
+    },
+    {
+      name      = "SLACK_CLIENT_ID"
+      valueFrom = var.slack_client_id_arn
+    },
+    {
+      name      = "SLACK_CLIENT_SECRET"
+      valueFrom = var.slack_client_secret_arn
+    },
+    {
+      name      = "SLACK_STATE_SECRET"
+      valueFrom = var.slack_state_secret_arn
     }
   ]
 }

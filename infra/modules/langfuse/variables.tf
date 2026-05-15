@@ -143,6 +143,21 @@ variable "clickhouse_password_arn" {
   type        = string
 }
 
+variable "slack_client_id_arn" {
+  description = "Slack App Client ID secret ARN"
+  type        = string
+}
+
+variable "slack_client_secret_arn" {
+  description = "Slack App Client Secret secret ARN"
+  type        = string
+}
+
+variable "slack_state_secret_arn" {
+  description = "Slack OAuth state secret ARN (CSRF protection for install flow)"
+  type        = string
+}
+
 # ALB Configuration
 variable "enable_alb" {
   description = "Enable ALB (recommended for production)"

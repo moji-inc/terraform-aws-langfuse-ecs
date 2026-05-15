@@ -130,7 +130,10 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
           aws_secretsmanager_secret.nextauth_secret.arn,
           aws_secretsmanager_secret.salt.arn,
           aws_secretsmanager_secret.encryption_key.arn,
-          aws_secretsmanager_secret.clickhouse_password.arn
+          aws_secretsmanager_secret.clickhouse_password.arn,
+          aws_secretsmanager_secret.slack_client_id.arn,
+          aws_secretsmanager_secret.slack_client_secret.arn,
+          aws_secretsmanager_secret.slack_state_secret.arn
         ]
       }
     ]
