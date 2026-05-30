@@ -125,16 +125,21 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = [
-          aws_secretsmanager_secret.database_url.arn,
-          aws_secretsmanager_secret.nextauth_secret.arn,
-          aws_secretsmanager_secret.salt.arn,
-          aws_secretsmanager_secret.encryption_key.arn,
-          aws_secretsmanager_secret.clickhouse_password.arn,
-          aws_secretsmanager_secret.slack_client_id.arn,
-          aws_secretsmanager_secret.slack_client_secret.arn,
-          aws_secretsmanager_secret.slack_state_secret.arn
-        ]
+        Resource = concat(
+          [
+            aws_secretsmanager_secret.database_url.arn,
+            aws_secretsmanager_secret.nextauth_secret.arn,
+            aws_secretsmanager_secret.salt.arn,
+            aws_secretsmanager_secret.encryption_key.arn,
+            aws_secretsmanager_secret.clickhouse_password.arn,
+            aws_secretsmanager_secret.slack_client_id.arn,
+            aws_secretsmanager_secret.slack_client_secret.arn,
+            aws_secretsmanager_secret.slack_state_secret.arn
+          ],
+          var.enable_ses && local.ses_smtp_secret_arn != null && local.ses_smtp_secret_arn != "" ? [
+            local.ses_smtp_secret_arn
+          ] : []
+        )
       }
     ]
   })

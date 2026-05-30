@@ -110,6 +110,10 @@ resource "aws_secretsmanager_secret" "slack_client_id" {
 resource "aws_secretsmanager_secret_version" "slack_client_id" {
   secret_id     = aws_secretsmanager_secret.slack_client_id.id
   secret_string = var.slack_client_id
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_secretsmanager_secret" "slack_client_secret" {
@@ -119,6 +123,10 @@ resource "aws_secretsmanager_secret" "slack_client_secret" {
 resource "aws_secretsmanager_secret_version" "slack_client_secret" {
   secret_id     = aws_secretsmanager_secret.slack_client_secret.id
   secret_string = var.slack_client_secret
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 resource "aws_secretsmanager_secret" "slack_state_secret" {
@@ -128,4 +136,27 @@ resource "aws_secretsmanager_secret" "slack_state_secret" {
 resource "aws_secretsmanager_secret_version" "slack_state_secret" {
   secret_id     = aws_secretsmanager_secret.slack_state_secret.id
   secret_string = random_password.slack_state_secret.result
+}
+
+# SES SMTP connection URL secret
+resource "aws_secretsmanager_secret" "smtp_connection_url" {
+  count = var.enable_ses && var.manage_ses_smtp_credentials ? 1 : 0
+
+  name = "${var.service_name}/smtp-connection-url"
+
+  lifecycle {
+    prevent_destroy = true
+
+    precondition {
+      condition     = var.manage_ses_smtp_credentials || trimspace(var.smtp_connection_url_secret_arn) != ""
+      error_message = "enable_ses with manage_ses_smtp_credentials=false requires smtp_connection_url_secret_arn."
+    }
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "smtp_connection_url" {
+  count = var.enable_ses && var.manage_ses_smtp_credentials ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.smtp_connection_url[0].id
+  secret_string = local.ses_smtp_endpoint_url
 }

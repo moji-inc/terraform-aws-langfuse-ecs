@@ -158,6 +158,18 @@ variable "slack_state_secret_arn" {
   type        = string
 }
 
+variable "email_from_address" {
+  description = "Email address used as EMAIL_FROM_ADDRESS"
+  type        = string
+  default     = null
+}
+
+variable "smtp_connection_url_arn" {
+  description = "Secrets Manager ARN containing SMTP_CONNECTION_URL"
+  type        = string
+  default     = null
+}
+
 # ALB Configuration
 variable "enable_alb" {
   description = "Enable ALB (recommended for production)"

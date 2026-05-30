@@ -15,6 +15,7 @@ github_repo = "moji-inc/ai-eval"
 # コンテナイメージ（省略可能）
 # 省略した場合は ECR の :latest タグを使用（GitHub Actions が ai-eval/ からビルドしてプッシュ）
 # 特定バージョンに固定したい場合のみコメントを外して設定する
+# 本番でTerraform applyする場合は、意図しないECS再デプロイを避けるため現在稼働中のタグに固定することを推奨
 # langfuse_web_image    = "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/langfuse/web:abc123"
 # langfuse_worker_image = "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/langfuse/worker:abc123"
 # clickhouse_image      = "123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/langfuse/clickhouse:24"
@@ -75,3 +76,21 @@ enable_alb = true
 # Custom Domain
 # custom_domain   = "langfuse.example.com"
 # route53_zone_id = "ZXXXXXXXXXXXX"
+
+# SES / Email Invitations
+# Keep ses_email_from_address as a bare email address. The app sets the display
+# name separately, so recipients see `ai-eval <noreply@ai-eval.jp>`.
+# enable_ses              = true
+# ses_domain_name         = "ai-eval.jp"
+# ses_route53_zone_id     = "ZXXXXXXXXXXXX"
+# ses_email_from_address  = "noreply@ai-eval.jp"
+# ses_mail_from_subdomain = "mail"
+# ses_create_dmarc_record = true
+#
+# Existing production SMTP credentials can stay in Secrets Manager without
+# Terraform managing the secret value. Set this true only when you want
+# Terraform to create/rotate the SES SMTP access key and secret value.
+# manage_ses_smtp_credentials = false
+#
+# manage_ses_smtp_credentials=false の場合は、既存のSecret ARNを指定する
+# smtp_connection_url_secret_arn = "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:langfuse/smtp-connection-url-xxxxxx"

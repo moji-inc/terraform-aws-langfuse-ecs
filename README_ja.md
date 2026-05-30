@@ -313,6 +313,15 @@ terraform apply -var-file=../tfvars/prod.tfvars
 | `certificate_arn` | ACM 証明書 ARN（未指定時は自己署名証明書） | `""` |
 | `custom_domain` | カスタムドメイン（例: langfuse.example.com） | `""` |
 | `route53_zone_id` | Route53 ホストゾーン ID（custom_domain 指定時は必須） | `""` |
+| `enable_ses` | SES SMTP を有効化し、招待メール・パスワードリセットメールを送信可能にする | `false` |
+| `ses_domain_name` | SES で検証する送信元ドメイン（未指定時は custom_domain） | `""` |
+| `ses_route53_zone_id` | SES DNS レコードを作る Route53 Hosted Zone ID（未指定時は route53_zone_id） | `""` |
+| `ses_email_from_address` | `EMAIL_FROM_ADDRESS` に設定する送信元メールアドレス。表示名はアプリ側で `ai-eval` を付ける | `noreply@<ses_domain_name>` |
+| `ses_mail_from_subdomain` | SES custom MAIL FROM 用サブドメイン | `mail` |
+| `ses_create_dmarc_record` | `_dmarc.<domain>` の DMARC TXT レコードを作成する | `false` |
+| `manage_ses_smtp_credentials` | SES SMTP access key と `SMTP_CONNECTION_URL` のSecret値をTerraformで作成・更新する。既存credentialを維持する本番では `false` のままにする | `false` |
+| `smtp_connection_url_secret_arn` | `manage_ses_smtp_credentials=false` の場合に使う既存 `SMTP_CONNECTION_URL` Secret ARN | `""` |
+| `ses_smtp_vpc_endpoint_subnet_ids` | SES SMTP VPC Endpoint を作るSubnet IDs。SES SMTP Endpoint非対応AZを避けたい場合に指定 | `null` |
 
 ## 出力
 
