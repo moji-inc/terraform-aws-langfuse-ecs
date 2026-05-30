@@ -69,7 +69,9 @@ module "langfuse" {
   worker_desired_count = var.worker_desired_count
   cache_node_type      = var.cache_node_type
 
-  nextauth_url = var.nextauth_url
+  nextauth_url            = var.nextauth_url
+  email_from_address      = var.enable_ses ? local.ses_email_from : null
+  smtp_connection_url_arn = local.ses_smtp_secret_arn
 
   database_url_arn        = aws_secretsmanager_secret.database_url.arn
   nextauth_secret_arn     = aws_secretsmanager_secret.nextauth_secret.arn

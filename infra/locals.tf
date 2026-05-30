@@ -35,3 +35,19 @@ locals {
   resolved_worker_image     = coalesce(var.langfuse_worker_image, "${aws_ecr_repository.worker.repository_url}:latest")
   resolved_clickhouse_image = coalesce(var.clickhouse_image, "${aws_ecr_repository.clickhouse.repository_url}:latest")
 }
+
+# =============================================================================
+# SES / SMTP 設定
+# =============================================================================
+# SES is optional. If `ses_domain_name` or `ses_route53_zone_id` are omitted,
+# reuse the application custom domain settings.
+locals {
+  ses_domain_name       = trimspace(var.ses_domain_name) != "" ? trimspace(var.ses_domain_name) : trimspace(var.custom_domain)
+  ses_route53_zone_id   = trimspace(var.ses_route53_zone_id) != "" ? trimspace(var.ses_route53_zone_id) : trimspace(var.route53_zone_id)
+  ses_email_from        = trimspace(var.ses_email_from_address) != "" ? trimspace(var.ses_email_from_address) : "noreply@${local.ses_domain_name}"
+  ses_mail_from_domain  = trimspace(var.ses_mail_from_subdomain) != "" ? "${trimspace(var.ses_mail_from_subdomain)}.${local.ses_domain_name}" : null
+  ses_smtp_host         = "email-smtp.${var.aws_region}.amazonaws.com"
+  ses_smtp_port         = 587
+  ses_smtp_endpoint_url = var.enable_ses && var.manage_ses_smtp_credentials ? "smtp://${aws_iam_access_key.ses_smtp[0].id}:${urlencode(aws_iam_access_key.ses_smtp[0].ses_smtp_password_v4)}@${local.ses_smtp_host}:${local.ses_smtp_port}" : null
+  ses_smtp_secret_arn   = var.enable_ses ? (var.manage_ses_smtp_credentials ? aws_secretsmanager_secret.smtp_connection_url[0].arn : trimspace(var.smtp_connection_url_secret_arn)) : null
+}

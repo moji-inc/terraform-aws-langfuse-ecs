@@ -317,6 +317,15 @@ terraform apply -var-file=../tfvars/prod.tfvars
 | `certificate_arn` | ACM certificate ARN (self-signed if empty) | `""` |
 | `custom_domain` | Custom domain (e.g., langfuse.example.com) | `""` |
 | `route53_zone_id` | Route53 hosted zone ID (required with custom_domain) | `""` |
+| `enable_ses` | Enable SES SMTP for invitation and password reset emails | `false` |
+| `ses_domain_name` | Sender domain to verify in SES (defaults to custom_domain) | `""` |
+| `ses_route53_zone_id` | Route53 hosted zone ID for SES DNS records (defaults to route53_zone_id) | `""` |
+| `ses_email_from_address` | Bare sender email address for `EMAIL_FROM_ADDRESS`; the app adds the `ai-eval` display name | `noreply@<ses_domain_name>` |
+| `ses_mail_from_subdomain` | Subdomain for SES custom MAIL FROM | `mail` |
+| `ses_create_dmarc_record` | Create the `_dmarc.<domain>` DMARC TXT record | `false` |
+| `manage_ses_smtp_credentials` | Create/update the SES SMTP access key and `SMTP_CONNECTION_URL` secret value with Terraform. Keep false in production when preserving an existing credential value | `false` |
+| `smtp_connection_url_secret_arn` | Existing `SMTP_CONNECTION_URL` secret ARN when `manage_ses_smtp_credentials=false` | `""` |
+| `ses_smtp_vpc_endpoint_subnet_ids` | Subnet IDs for the SES SMTP VPC Endpoint; set this to avoid AZs unsupported by SES SMTP endpoints | `null` |
 
 ## Outputs
 

@@ -25,6 +25,10 @@ resource "aws_ecs_task_definition" "worker" {
       name  = "langfuse-worker"
       image = var.worker_image
 
+      mountPoints    = []
+      systemControls = []
+      volumesFrom    = []
+
       portMappings = [
         {
           containerPort = 3030

@@ -310,6 +310,8 @@ resource "aws_ecs_service" "clickhouse" {
 | `LANGFUSE_S3_EVENT_UPLOAD_BUCKET` | 変数 | S3 バケット名 |
 | `LANGFUSE_S3_EVENT_UPLOAD_REGION` | 変数 | AWS リージョン |
 | `HOSTNAME` | 固定 | `0.0.0.0` |
+| `EMAIL_FROM_ADDRESS` | 変数 | 招待メール・パスワードリセットメールの送信元メールアドレス |
+| `SMTP_CONNECTION_URL` | Secrets Manager | SES SMTP 接続URL |
 
 - S3 アクセスは IAM ロール (ECS タスクロール) を使用し、アクセスキーは不要
 
@@ -351,6 +353,10 @@ infra/
 | `langfuse_web_image` | `string` | Langfuse Web の ECR イメージ URL |
 | `langfuse_worker_image` | `string` | Langfuse Worker の ECR イメージ URL |
 | `clickhouse_image` | `string` | ClickHouse の ECR イメージ URL |
+| `enable_ses` | `bool` | SES SMTP によるメール送信を有効化 (default: `false`) |
+| `ses_domain_name` | `string` | SES で検証する送信元ドメイン |
+| `ses_email_from_address` | `string` | 送信元メールアドレス。表示名はアプリ側で `ai-eval` を付与 |
+| `smtp_connection_url_secret_arn` | `string` | 既存SMTP credentialを使う場合のSecrets Manager ARN |
 | `db_instance_class` | `string` | RDS インスタンスクラス (default: `db.t4g.micro`) |
 | `db_name` | `string` | データベース名 (default: `langfuse`, ハイフン不可) |
 | `cache_node_type` | `string` | ElastiCache ノードタイプ (default: `cache.t4g.micro`) |

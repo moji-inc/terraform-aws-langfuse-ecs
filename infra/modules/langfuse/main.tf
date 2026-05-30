@@ -18,7 +18,14 @@ locals {
   clickhouse_migration_url = "clickhouse://clickhouse.${var.clickhouse_dns_namespace}:9000"
   redis_connection_string  = "redis://${aws_elasticache_cluster.main.cache_nodes[0].address}:6379"
 
-  common_environment = [
+  email_environment = var.email_from_address != null && var.email_from_address != "" ? [
+    {
+      name  = "EMAIL_FROM_ADDRESS"
+      value = var.email_from_address
+    }
+  ] : []
+
+  common_environment = concat([
     {
       name  = "CLICKHOUSE_URL"
       value = local.clickhouse_http_url
@@ -51,9 +58,16 @@ locals {
       name  = "HOSTNAME"
       value = "0.0.0.0"
     }
-  ]
+  ], local.email_environment)
 
-  common_secrets = [
+  email_secrets = var.smtp_connection_url_arn != null && var.smtp_connection_url_arn != "" ? [
+    {
+      name      = "SMTP_CONNECTION_URL"
+      valueFrom = var.smtp_connection_url_arn
+    }
+  ] : []
+
+  common_secrets = concat([
     {
       name      = "DATABASE_URL"
       valueFrom = var.database_url_arn
@@ -90,5 +104,5 @@ locals {
       name      = "SLACK_STATE_SECRET"
       valueFrom = var.slack_state_secret_arn
     }
-  ]
+  ], local.email_secrets)
 }

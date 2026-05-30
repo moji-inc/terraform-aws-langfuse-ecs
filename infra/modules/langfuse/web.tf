@@ -25,6 +25,10 @@ resource "aws_ecs_task_definition" "web" {
       name  = "langfuse-web"
       image = var.web_image
 
+      mountPoints    = []
+      systemControls = []
+      volumesFrom    = []
+
       portMappings = [
         {
           containerPort = 3000

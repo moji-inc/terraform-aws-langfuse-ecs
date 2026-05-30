@@ -310,6 +310,8 @@ resource "aws_ecs_service" "clickhouse" {
 | `LANGFUSE_S3_EVENT_UPLOAD_BUCKET` | Variable | S3 bucket name |
 | `LANGFUSE_S3_EVENT_UPLOAD_REGION` | Variable | AWS region |
 | `HOSTNAME` | Fixed | `0.0.0.0` |
+| `EMAIL_FROM_ADDRESS` | Variable | Sender email address for invitation and password reset emails |
+| `SMTP_CONNECTION_URL` | Secrets Manager | SES SMTP connection URL |
 
 - S3 access uses IAM role (ECS task role), no access keys required
 
@@ -351,6 +353,10 @@ infra/
 | `langfuse_web_image` | `string` | ECR image URL for Langfuse Web |
 | `langfuse_worker_image` | `string` | ECR image URL for Langfuse Worker |
 | `clickhouse_image` | `string` | ECR image URL for ClickHouse |
+| `enable_ses` | `bool` | Enable SES SMTP email sending (default: `false`) |
+| `ses_domain_name` | `string` | Sender domain to verify in SES |
+| `ses_email_from_address` | `string` | Sender email address; the app adds the `ai-eval` display name |
+| `smtp_connection_url_secret_arn` | `string` | Secrets Manager ARN when using existing SMTP credentials |
 | `db_instance_class` | `string` | RDS instance class (default: `db.t4g.micro`) |
 | `db_name` | `string` | Database name (default: `langfuse`, no hyphens allowed) |
 | `cache_node_type` | `string` | ElastiCache node type (default: `cache.t4g.micro`) |
