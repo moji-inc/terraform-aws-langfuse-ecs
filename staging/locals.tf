@@ -3,7 +3,7 @@ locals {
 
   clickhouse_http_url      = "http://clickhouse.${var.production_service_name}.local:8123"
   clickhouse_migration_url = "clickhouse://clickhouse.${var.production_service_name}.local:9000"
-  redis_connection_string  = "redis://${data.aws_elasticache_cluster.production.cache_nodes[0].address}:6379"
+  redis_connection_string  = "rediss://${aws_elasticache_replication_group.staging.primary_endpoint_address}:${aws_elasticache_replication_group.staging.port}"
 
   common_environment = [
     {
@@ -20,7 +20,7 @@ locals {
     },
     {
       name  = "CLICKHOUSE_USER"
-      value = "default"
+      value = var.clickhouse_user
     },
     {
       name  = "CLICKHOUSE_CLUSTER_ENABLED"
@@ -71,7 +71,7 @@ locals {
     },
     {
       name      = "CLICKHOUSE_PASSWORD"
-      valueFrom = data.aws_secretsmanager_secret.production_clickhouse_password.arn
+      valueFrom = "${aws_secretsmanager_secret.app.arn}:CLICKHOUSE_PASSWORD::"
     },
   ]
 }

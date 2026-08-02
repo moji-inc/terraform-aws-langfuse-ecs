@@ -79,7 +79,19 @@ resource "aws_ecs_task_definition" "clickhouse_init" {
         --host clickhouse.${var.production_service_name}.local \
         --user default \
         --password "$ADMIN_CLICKHOUSE_PASSWORD" \
-        --query "CREATE DATABASE IF NOT EXISTS ${var.clickhouse_database}"
+        --multiquery <<SQL
+      CREATE DATABASE IF NOT EXISTS ${var.clickhouse_database};
+      CREATE USER IF NOT EXISTS ${var.clickhouse_user} IDENTIFIED WITH sha256_password BY '$STAGING_CLICKHOUSE_PASSWORD';
+      ALTER USER ${var.clickhouse_user} IDENTIFIED WITH sha256_password BY '$STAGING_CLICKHOUSE_PASSWORD';
+      GRANT ALL ON ${var.clickhouse_database}.* TO ${var.clickhouse_user};
+      SQL
+
+      clickhouse-client \
+        --host clickhouse.${var.production_service_name}.local \
+        --user ${var.clickhouse_user} \
+        --password "$STAGING_CLICKHOUSE_PASSWORD" \
+        --database ${var.clickhouse_database} \
+        --query "SELECT 1"
     SCRIPT
     ]
 
@@ -87,6 +99,10 @@ resource "aws_ecs_task_definition" "clickhouse_init" {
       {
         name      = "ADMIN_CLICKHOUSE_PASSWORD"
         valueFrom = data.aws_secretsmanager_secret.production_clickhouse_password.arn
+      },
+      {
+        name      = "STAGING_CLICKHOUSE_PASSWORD"
+        valueFrom = "${aws_secretsmanager_secret.app.arn}:CLICKHOUSE_PASSWORD::"
       },
     ]
 

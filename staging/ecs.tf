@@ -49,9 +49,6 @@ resource "aws_ecs_task_definition" "web" {
     }
   }])
 
-  lifecycle {
-    ignore_changes = [container_definitions]
-  }
 }
 
 resource "aws_ecs_task_definition" "worker" {
@@ -92,9 +89,6 @@ resource "aws_ecs_task_definition" "worker" {
     }
   }])
 
-  lifecycle {
-    ignore_changes = [container_definitions]
-  }
 }
 
 resource "aws_ecs_service" "web" {
@@ -113,7 +107,7 @@ resource "aws_ecs_service" "web" {
 
   network_configuration {
     subnets          = local.private_subnet_ids
-    security_groups  = [data.aws_security_group.web.id]
+    security_groups  = [aws_security_group.web.id]
     assign_public_ip = false
   }
 
@@ -126,6 +120,8 @@ resource "aws_ecs_service" "web" {
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }
+
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
 }
 
 resource "aws_ecs_service" "worker" {
@@ -142,11 +138,13 @@ resource "aws_ecs_service" "worker" {
 
   network_configuration {
     subnets          = local.private_subnet_ids
-    security_groups  = [data.aws_security_group.worker.id]
+    security_groups  = [aws_security_group.worker.id]
     assign_public_ip = false
   }
 
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }
+
+  depends_on = [aws_iam_role_policy.task_execution_secrets]
 }

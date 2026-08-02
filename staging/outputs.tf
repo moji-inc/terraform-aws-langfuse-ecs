@@ -39,9 +39,13 @@ output "private_subnet_ids" {
 }
 
 output "init_security_group_id" {
-  value = data.aws_security_group.web.id
+  value = aws_security_group.web.id
 }
 
 output "s3_bucket_name" {
   value = aws_s3_bucket.staging.id
+}
+
+output "redis_endpoint" {
+  value = aws_elasticache_replication_group.staging.primary_endpoint_address
 }

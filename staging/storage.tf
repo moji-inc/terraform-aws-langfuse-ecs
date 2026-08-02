@@ -36,6 +36,33 @@ resource "aws_s3_bucket_lifecycle_configuration" "staging" {
   }
 }
 
+resource "aws_elasticache_subnet_group" "staging" {
+  name       = "${var.service_name}-cache"
+  subnet_ids = local.private_subnet_ids
+}
+
+resource "aws_elasticache_replication_group" "staging" {
+  replication_group_id = "${var.service_name}-redis"
+  description          = "Low-cost staging-only Valkey cache"
+
+  engine         = "valkey"
+  engine_version = "8.0"
+  node_type      = "cache.t4g.micro"
+  port           = 6379
+
+  num_cache_clusters         = 1
+  automatic_failover_enabled = false
+  multi_az_enabled           = false
+
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  apply_immediately          = true
+  snapshot_retention_limit   = 0
+
+  subnet_group_name  = aws_elasticache_subnet_group.staging.name
+  security_group_ids = [aws_security_group.redis.id]
+}
+
 resource "aws_ecr_repository" "web" {
   name                 = "${var.service_name}/web"
   image_tag_mutability = "MUTABLE"

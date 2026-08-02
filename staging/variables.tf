@@ -52,8 +52,14 @@ variable "clickhouse_database" {
   default     = "langfuse_stg"
 }
 
+variable "clickhouse_user" {
+  description = "ClickHouse user restricted to the staging database."
+  type        = string
+  default     = "langfuse_stg"
+}
+
 variable "redis_key_prefix" {
-  description = "Prefix that isolates staging queues and cache keys in the shared Redis cluster."
+  description = "Prefix for staging queues and cache keys in the dedicated Valkey node."
   type        = string
   default     = "staging"
 }
@@ -86,4 +92,10 @@ variable "initial_desired_count" {
   description = "Keep services stopped until shared databases have been initialized."
   type        = number
   default     = 0
+}
+
+variable "allow_legacy_production_clickhouse_secret" {
+  description = "Temporarily allow legacy staging task definitions to read the production ClickHouse admin secret during a two-phase migration."
+  type        = bool
+  default     = false
 }

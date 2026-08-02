@@ -17,13 +17,18 @@ data "aws_subnets" "private" {
   }
 }
 
-data "aws_security_group" "web" {
-  name   = "${var.production_service_name}-web"
+data "aws_security_group" "alb" {
+  name   = "${var.production_service_name}-alb"
   vpc_id = data.aws_vpc.production.id
 }
 
-data "aws_security_group" "worker" {
-  name   = "${var.production_service_name}-worker"
+data "aws_security_group" "rds" {
+  name   = "${var.production_service_name}-rds"
+  vpc_id = data.aws_vpc.production.id
+}
+
+data "aws_security_group" "clickhouse" {
+  name   = "${var.production_service_name}-clickhouse"
   vpc_id = data.aws_vpc.production.id
 }
 
@@ -48,10 +53,6 @@ data "aws_route53_zone" "production" {
 
 data "aws_db_instance" "production" {
   db_instance_identifier = "${var.production_service_name}-postgres"
-}
-
-data "aws_elasticache_cluster" "production" {
-  cluster_id = "${var.production_service_name}-redis"
 }
 
 data "aws_secretsmanager_secret" "production_database_url" {

@@ -1,3 +1,188 @@
+resource "aws_security_group" "web" {
+  name        = "${var.service_name}-web"
+  description = "Staging web tasks with restricted data-service egress"
+  vpc_id      = data.aws_vpc.production.id
+}
+
+resource "aws_security_group" "worker" {
+  name        = "${var.service_name}-worker"
+  description = "Staging worker tasks with restricted data-service egress"
+  vpc_id      = data.aws_vpc.production.id
+}
+
+resource "aws_security_group" "redis" {
+  name        = "${var.service_name}-redis"
+  description = "Staging-only Valkey serverless cache"
+  vpc_id      = data.aws_vpc.production.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "web_from_alb" {
+  security_group_id            = aws_security_group.web.id
+  referenced_security_group_id = data.aws_security_group.alb.id
+  from_port                    = 3000
+  to_port                      = 3000
+  ip_protocol                  = "tcp"
+  description                  = "HTTPS listener traffic from the shared ALB"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "worker_from_web" {
+  security_group_id            = aws_security_group.worker.id
+  referenced_security_group_id = aws_security_group.web.id
+  from_port                    = 3030
+  to_port                      = 3030
+  ip_protocol                  = "tcp"
+  description                  = "Worker health checks from staging web"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_from_staging" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = data.aws_security_group.rds.id
+  referenced_security_group_id = each.value
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  description                  = "PostgreSQL from staging ${each.key}"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "clickhouse_http_from_staging" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = data.aws_security_group.clickhouse.id
+  referenced_security_group_id = each.value
+  from_port                    = 8123
+  to_port                      = 8123
+  ip_protocol                  = "tcp"
+  description                  = "ClickHouse HTTP from staging ${each.key}"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "clickhouse_native_from_staging" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = data.aws_security_group.clickhouse.id
+  referenced_security_group_id = each.value
+  from_port                    = 9000
+  to_port                      = 9000
+  ip_protocol                  = "tcp"
+  description                  = "ClickHouse native protocol from staging ${each.key}"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "redis_from_staging" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = aws_security_group.redis.id
+  referenced_security_group_id = each.value
+  from_port                    = 6379
+  to_port                      = 6379
+  ip_protocol                  = "tcp"
+  description                  = "Valkey TLS from staging ${each.key}"
+}
+
+resource "aws_vpc_security_group_egress_rule" "app_https" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id = each.value
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+  description       = "HTTPS for AWS endpoints and external APIs"
+}
+
+resource "aws_vpc_security_group_egress_rule" "app_http" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id = each.value
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  description       = "HTTP for metadata and explicitly configured APIs"
+}
+
+resource "aws_vpc_security_group_egress_rule" "app_to_rds" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = each.value
+  referenced_security_group_id = data.aws_security_group.rds.id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+  description                  = "Staging PostgreSQL"
+}
+
+resource "aws_vpc_security_group_egress_rule" "app_to_clickhouse_http" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = each.value
+  referenced_security_group_id = data.aws_security_group.clickhouse.id
+  from_port                    = 8123
+  to_port                      = 8123
+  ip_protocol                  = "tcp"
+  description                  = "Staging ClickHouse HTTP"
+}
+
+resource "aws_vpc_security_group_egress_rule" "app_to_clickhouse_native" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = each.value
+  referenced_security_group_id = data.aws_security_group.clickhouse.id
+  from_port                    = 9000
+  to_port                      = 9000
+  ip_protocol                  = "tcp"
+  description                  = "Staging ClickHouse native protocol"
+}
+
+resource "aws_vpc_security_group_egress_rule" "app_to_redis" {
+  for_each = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+
+  security_group_id            = each.value
+  referenced_security_group_id = aws_security_group.redis.id
+  from_port                    = 6379
+  to_port                      = 6379
+  ip_protocol                  = "tcp"
+  description                  = "Staging-only Valkey"
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_to_worker" {
+  security_group_id            = aws_security_group.web.id
+  referenced_security_group_id = aws_security_group.worker.id
+  from_port                    = 3030
+  to_port                      = 3030
+  ip_protocol                  = "tcp"
+  description                  = "Worker health checks"
+}
+
 resource "aws_acm_certificate" "staging" {
   domain_name       = var.domain_name
   validation_method = "DNS"

@@ -22,10 +22,10 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
 data "aws_iam_policy_document" "task_execution_secrets" {
   statement {
     actions = ["secretsmanager:GetSecretValue"]
-    resources = [
-      aws_secretsmanager_secret.app.arn,
-      data.aws_secretsmanager_secret.production_clickhouse_password.arn,
-    ]
+    resources = concat(
+      [aws_secretsmanager_secret.app.arn],
+      var.allow_legacy_production_clickhouse_secret ? [data.aws_secretsmanager_secret.production_clickhouse_password.arn] : [],
+    )
   }
 }
 
@@ -148,10 +148,19 @@ data "aws_iam_policy_document" "github_actions" {
       "ecs:DescribeTaskDefinition",
       "ecs:RegisterTaskDefinition",
       "ecs:TagResource",
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
     ]
     resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "ecs:DescribeServices",
+      "ecs:UpdateService",
+    ]
+    resources = [
+      aws_ecs_service.web.id,
+      aws_ecs_service.worker.id,
+    ]
   }
 
   statement {

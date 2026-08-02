@@ -2,16 +2,34 @@
 
 Low-cost staging resources for `https://stg.ai-eval.jp`.
 
-The staging application has separate ECS services, PostgreSQL/ClickHouse
-databases, Redis key prefix, S3 bucket, secrets, logs, ECR repositories, and
-TLS certificate. It reuses the production VPC, ALB, RDS instance, Redis
-cluster, ClickHouse service, and ClickHouse login to avoid duplicating their
-fixed monthly cost.
+The staging application has separate ECS services, application security groups,
+PostgreSQL/ClickHouse databases and users, a single-node Valkey cache, S3 bucket,
+secrets, logs, ECR repositories, and TLS certificate. It reuses the production
+VPC, ALB, RDS instance, and ClickHouse service to avoid duplicating their fixed
+monthly cost without giving staging access to production data credentials.
+
+The shared ClickHouse task must enable SQL access management. That setting is
+managed by `infra/modules/clickhouse`, and allows the bootstrap task to create a
+user restricted to `langfuse_stg.*`.
 
 ## Deploy
 
+First apply the production ClickHouse task change from `../infra` and wait for
+`langfuse-clickhouse` to become stable. This enables SQL user management before
+the staging bootstrap runs:
+
 ```bash
 aws sso login --profile rd:engineering
+cd ../infra
+terraform plan -out=clickhouse-access.tfplan
+terraform apply clickhouse-access.tfplan
+aws ecs wait services-stable --profile rd:engineering --region ap-northeast-1 --cluster langfuse --services langfuse-clickhouse
+cd ../staging
+```
+
+For a new staging stack:
+
+```bash
 terraform init
 terraform plan
 terraform apply
@@ -19,8 +37,26 @@ terraform apply
 ```
 
 `terraform apply` creates the ECS services at desired count zero. The bootstrap
-script initializes the logically separated PostgreSQL and ClickHouse databases,
-then starts the web and worker services.
+script initializes the logically separated PostgreSQL database and restricted
+ClickHouse user. It migrates a task definition only when its Terraform-managed
+configuration differs (the application image is ignored); otherwise it scales
+the current web and worker task definitions without rolling back GitHub Actions
+revisions.
+
+When upgrading a legacy staging stack that still reads the production
+ClickHouse secret, use a two-phase apply so the old task remains startable while
+the bootstrap migrates it. Pause staging GitHub Actions during these commands.
+The final apply removes that temporary permission, and the last bootstrap run
+rechecks the service configuration without rolling back its image revision:
+
+```bash
+terraform plan -var allow_legacy_production_clickhouse_secret=true -out=staging-migration.tfplan
+terraform apply staging-migration.tfplan
+./scripts/bootstrap.sh
+terraform plan -out=staging-final.tfplan
+terraform apply staging-final.tfplan
+./scripts/bootstrap.sh
+```
 
 Set these GitHub Environment variables on `staging` using the Terraform output:
 
@@ -45,7 +81,9 @@ gh workflow run deploy.yml \
 
 ## Cost controls
 
-- No additional ALB, NAT Gateway, RDS instance, Redis cluster, or ClickHouse task.
+- No additional ALB, NAT Gateway, RDS instance, or ClickHouse task.
+- One staging-only `cache.t4g.micro` Valkey node. Serverless Valkey is not used
+  because its cluster-mode key routing is incompatible with the BullMQ queues.
 - Web and worker use 0.5 vCPU / 1 GiB each.
 - Staging S3 data expires after 30 days; logs expire after 7–14 days.
 - To stop compute when staging is unused:
@@ -55,5 +93,6 @@ aws ecs update-service --profile rd:engineering --region ap-northeast-1 --cluste
 aws ecs update-service --profile rd:engineering --region ap-northeast-1 --cluster langfuse-stg --service langfuse-stg-worker --desired-count 0
 ```
 
-This setup isolates data logically, not physically. A staging load spike can
-still affect the shared production RDS, Redis, or ClickHouse capacity.
+PostgreSQL and ClickHouse remain physically shared, but staging uses separate
+credentials and restricted security groups. A staging load spike can still
+affect the shared production RDS or ClickHouse capacity.
