@@ -53,7 +53,7 @@ For testing or small to medium-scale production environments, these can be overk
 | Database | Aurora PostgreSQL | RDS PostgreSQL |
 | CPU Architecture | x86_64 / ARM64 | ARM64 (Graviton) |
 | Domain/Certificate | Required | Optional (self-signed certificate supported) |
-| VPC External Communication | NAT Gateway | VPC Endpoints |
+| VPC External Communication | NAT Gateway | VPC Endpoints by default, optional NAT Gateway |
 | Target Use Case | Production | Development/Testing/Small-Medium Production |
 | Operational Skills | Kubernetes required | Not required |
 | Monthly Cost Estimate | [~$450+](https://www.gao-ai.com/post/langfuse-on-aws-with-terraform) | ~$130+ |
@@ -73,7 +73,7 @@ For development/testing phases, HTTPS access is possible with self-signed certif
 
 - **RDS PostgreSQL**: Lower cost than Aurora
 - **ARM64 (Graviton)**: ~20% cost reduction compared to x86_64
-- **VPC Endpoints**: Reduced fixed costs by eliminating NAT Gateway
+- **VPC Endpoints**: Reduced fixed costs by not creating NAT Gateway by default
 - **S3 Intelligent-Tiering**: Automatic storage cost optimization
 
 ## Architecture Overview
@@ -121,16 +121,16 @@ flowchart TB
 
 AWS Cloud Map (ECS Service Discovery) is used for connecting to ClickHouse. Name resolution is done via the internal DNS name `clickhouse.langfuse.local`, and DNS records are automatically updated when ECS tasks restart.
 
-#### No NAT Gateway with VPC Endpoints
+#### VPC Endpoints by Default, Optional NAT Gateway
 
-VPC Endpoints are used for accessing AWS services from Private Subnets:
+VPC Endpoints are used by default for accessing AWS services from Private Subnets:
 
 - ECR (container image retrieval)
 - CloudWatch Logs (log delivery)
 - Secrets Manager (secret retrieval)
 - S3 (blob storage)
 
-This eliminates NAT Gateway monthly fixed costs (~$45/month) + data processing fees.
+This avoids NAT Gateway monthly fixed costs (~$45/month) + data processing fees by default. If private workloads need external API egress, such as Langfuse Worker calling OpenAI/Anthropic for LLM-as-a-Judge, enable the optional NAT Gateway.
 
 #### Cost Optimization with ARM64 (Graviton)
 
@@ -152,8 +152,8 @@ git clone https://github.com/myui/terraform-aws-langfuse-ecs.git
 cd terraform-aws-langfuse-ecs
 
 # 2. Create tfvars file
-cp tfvars/example.tfvars tfvars/dev.tfvars
-# Edit tfvars/dev.tfvars
+cp tfvars/example.tfvars tfvars/prod.tfvars
+# Edit tfvars/prod.tfvars
 
 # 3. Create ECR repositories
 aws ecr create-repository --repository-name langfuse-dev/web
@@ -166,7 +166,7 @@ aws ecr create-repository --repository-name langfuse-dev/clickhouse
 # 5. Run Terraform
 cd infra
 terraform init
-terraform apply -var-file=../tfvars/dev.tfvars
+terraform apply -var-file=../tfvars/prod.tfvars
 ```
 
 For detailed instructions, refer to the [README](https://github.com/myui/terraform-aws-langfuse-ecs).
@@ -174,7 +174,7 @@ For detailed instructions, refer to the [README](https://github.com/myui/terrafo
 ### Configuration Example
 
 ```hcl
-# tfvars/dev.tfvars
+# tfvars/prod.tfvars
 aws_region   = "ap-northeast-1"
 service_name = "langfuse"
 user         = "your-name"
@@ -201,7 +201,7 @@ This project can start with a small-scale configuration but can be scaled up acc
 ### Changing RDS Instance Class
 
 ```hcl
-# tfvars/dev.tfvars
+# tfvars/prod.tfvars
 db_instance_class = "db.t4g.small"  # micro → small
 db_multi_az       = true             # For high availability
 ```

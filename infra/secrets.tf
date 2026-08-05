@@ -22,13 +22,11 @@ resource "random_password" "salt" {
   special = false
 }
 
-# Random encryption key (256-bit hex = 64 hex characters)
-resource "random_password" "encryption_key" {
-  length  = 64
-  special = false
-  upper   = false
-  numeric = true
-  lower   = true
+# Random encryption key (256-bit = 32 bytes, encoded as 64 hex characters).
+# Langfuse expects a hex-encoded key. Do not rotate this for an existing
+# deployment unless you have a tested data re-encryption/migration procedure.
+resource "random_id" "encryption_key" {
+  byte_length = 32
 }
 
 # Database URL secret
@@ -68,7 +66,14 @@ resource "aws_secretsmanager_secret" "encryption_key" {
 
 resource "aws_secretsmanager_secret_version" "encryption_key" {
   secret_id     = aws_secretsmanager_secret.encryption_key.id
-  secret_string = random_password.encryption_key.result
+  secret_string = random_id.encryption_key.hex
+
+  lifecycle {
+    # Existing Langfuse secrets are encrypted with this value. Ignore generated
+    # value drift so a Terraform refactor cannot accidentally rotate the key and
+    # make stored credentials impossible to decrypt.
+    ignore_changes = [secret_string]
+  }
 }
 
 # ClickHouse password secret
@@ -79,4 +84,79 @@ resource "aws_secretsmanager_secret" "clickhouse_password" {
 resource "aws_secretsmanager_secret_version" "clickhouse_password" {
   secret_id     = aws_secretsmanager_secret.clickhouse_password.id
   secret_string = random_password.clickhouse_password.result
+}
+
+# ---------------------------------------------------------------------------
+# Slack integration secrets
+# ---------------------------------------------------------------------------
+# Slack OAuth state secret: signs the `state` parameter Langfuse round-trips
+# through Slack during the install flow. Generated locally; never input on the
+# Slack side. Rotating breaks in-flight OAuth attempts but does not invalidate
+# stored bot tokens.
+resource "random_password" "slack_state_secret" {
+  length  = 64
+  special = false
+}
+
+# Slack Client ID (from the Slack App's Basic Information). Stored in Secrets
+# Manager and injected into the ECS task at runtime. Empty `var.slack_client_id`
+# is allowed so `terraform plan` works for environments that have not yet
+# rotated values in; the ECS task will simply fail OAuth until a non-empty
+# value is supplied via `TF_VAR_slack_client_id` and re-applied.
+resource "aws_secretsmanager_secret" "slack_client_id" {
+  name = "${var.service_name}/slack-client-id"
+}
+
+resource "aws_secretsmanager_secret_version" "slack_client_id" {
+  secret_id     = aws_secretsmanager_secret.slack_client_id.id
+  secret_string = var.slack_client_id
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret" "slack_client_secret" {
+  name = "${var.service_name}/slack-client-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "slack_client_secret" {
+  secret_id     = aws_secretsmanager_secret.slack_client_secret.id
+  secret_string = var.slack_client_secret
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+resource "aws_secretsmanager_secret" "slack_state_secret" {
+  name = "${var.service_name}/slack-state-secret"
+}
+
+resource "aws_secretsmanager_secret_version" "slack_state_secret" {
+  secret_id     = aws_secretsmanager_secret.slack_state_secret.id
+  secret_string = random_password.slack_state_secret.result
+}
+
+# SES SMTP connection URL secret
+resource "aws_secretsmanager_secret" "smtp_connection_url" {
+  count = var.enable_ses && var.manage_ses_smtp_credentials ? 1 : 0
+
+  name = "${var.service_name}/smtp-connection-url"
+
+  lifecycle {
+    prevent_destroy = true
+
+    precondition {
+      condition     = var.manage_ses_smtp_credentials || trimspace(var.smtp_connection_url_secret_arn) != ""
+      error_message = "enable_ses with manage_ses_smtp_credentials=false requires smtp_connection_url_secret_arn."
+    }
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "smtp_connection_url" {
+  count = var.enable_ses && var.manage_ses_smtp_credentials ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.smtp_connection_url[0].id
+  secret_string = local.ses_smtp_endpoint_url
 }

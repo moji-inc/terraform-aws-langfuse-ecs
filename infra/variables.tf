@@ -40,6 +40,12 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "enable_nat_gateway" {
+  description = "Add a NAT Gateway so private subnets can reach the internet (e.g., for LLM-as-a-Judge calling external OpenAI/Anthropic APIs). Only applies when this module creates the VPC."
+  type        = bool
+  default     = false
+}
+
 variable "exclude_az_ids" {
   description = "AZ IDs to exclude (used only when ecs_cpu_architecture is ARM64)"
   type        = list(string)
@@ -196,6 +202,109 @@ variable "custom_domain" {
 
 variable "route53_zone_id" {
   description = "Route53 hosted zone ID for custom domain. Required when custom_domain is set."
+  type        = string
+  default     = ""
+}
+
+# Slack integration (multi-tenant). Values come from the Slack App's Basic
+# Information page after creating the App from the manifest. Pass at apply
+# time via `TF_VAR_slack_client_id=...` / `TF_VAR_slack_client_secret=...` so
+# the values never land in tfvars files. The state secret is generated locally
+# (see secrets.tf); Slack has no equivalent input for it.
+variable "slack_client_id" {
+  description = "Slack App Client ID (from https://api.slack.com/apps → Basic Information)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "slack_client_secret" {
+  description = "Slack App Client Secret (from https://api.slack.com/apps → Basic Information)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# SES / Email Invitation Configuration
+variable "enable_ses" {
+  description = "Enable Amazon SES SMTP for Langfuse email invitations and password reset emails."
+  type        = bool
+  default     = false
+}
+
+variable "ses_domain_name" {
+  description = "Domain name to verify in SES. Defaults to custom_domain when empty."
+  type        = string
+  default     = ""
+}
+
+variable "ses_route53_zone_id" {
+  description = "Route53 hosted zone ID for SES DNS records. Defaults to route53_zone_id when empty."
+  type        = string
+  default     = ""
+}
+
+variable "ses_email_from_address" {
+  description = "Email address used as EMAIL_FROM_ADDRESS. Defaults to noreply@ses_domain_name."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.ses_email_from_address == "" || can(regex("^[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+$", var.ses_email_from_address))
+    error_message = "ses_email_from_address must be a bare email address without a display name."
+  }
+}
+
+variable "ses_mail_from_subdomain" {
+  description = "Subdomain for custom SES MAIL FROM domain. Empty disables custom MAIL FROM."
+  type        = string
+  default     = "mail"
+}
+
+variable "ses_create_spf_record" {
+  description = "Whether to create an SPF TXT record for SES at ses_domain_name."
+  type        = bool
+  default     = false
+}
+
+variable "ses_create_dmarc_record" {
+  description = "Whether to create a DMARC TXT record at _dmarc.ses_domain_name."
+  type        = bool
+  default     = false
+}
+
+variable "ses_dmarc_policy" {
+  description = "DMARC TXT record value when ses_create_dmarc_record is true."
+  type        = string
+  default     = "v=DMARC1; p=none;"
+}
+
+variable "ses_dkim_domain_suffix" {
+  description = "DKIM target suffix for SES DKIM records."
+  type        = string
+  default     = "dkim.amazonses.com"
+}
+
+variable "create_ses_smtp_vpc_endpoint" {
+  description = "Create an Interface VPC Endpoint for SES SMTP access from private ECS tasks."
+  type        = bool
+  default     = true
+}
+
+variable "ses_smtp_vpc_endpoint_subnet_ids" {
+  description = "Subnet IDs for the SES SMTP VPC Endpoint. Defaults to private_subnet_ids."
+  type        = list(string)
+  default     = null
+}
+
+variable "manage_ses_smtp_credentials" {
+  description = "Create and manage SES SMTP access key and SMTP_CONNECTION_URL secret value. Leave false to keep an existing manually-created credential value."
+  type        = bool
+  default     = false
+}
+
+variable "smtp_connection_url_secret_arn" {
+  description = "Existing Secrets Manager ARN containing SMTP_CONNECTION_URL when manage_ses_smtp_credentials is false."
   type        = string
   default     = ""
 }

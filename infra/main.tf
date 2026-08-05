@@ -69,13 +69,18 @@ module "langfuse" {
   worker_desired_count = var.worker_desired_count
   cache_node_type      = var.cache_node_type
 
-  nextauth_url = var.nextauth_url
+  nextauth_url            = var.nextauth_url
+  email_from_address      = var.enable_ses ? local.ses_email_from : null
+  smtp_connection_url_arn = local.ses_smtp_secret_arn
 
   database_url_arn        = aws_secretsmanager_secret.database_url.arn
   nextauth_secret_arn     = aws_secretsmanager_secret.nextauth_secret.arn
   salt_arn                = aws_secretsmanager_secret.salt.arn
   encryption_key_arn      = aws_secretsmanager_secret.encryption_key.arn
   clickhouse_password_arn = aws_secretsmanager_secret.clickhouse_password.arn
+  slack_client_id_arn     = aws_secretsmanager_secret.slack_client_id.arn
+  slack_client_secret_arn = aws_secretsmanager_secret.slack_client_secret.arn
+  slack_state_secret_arn  = aws_secretsmanager_secret.slack_state_secret.arn
 
   # ALB configuration
   enable_alb                 = var.enable_alb

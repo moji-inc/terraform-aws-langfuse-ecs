@@ -83,3 +83,29 @@ output "github_actions_role_arn" {
   description = "GitHub Actions OIDC 用 IAM ロール ARN（GitHub Actions Variables: AWS_ROLE_ARN）"
   value       = aws_iam_role.github_actions.arn
 }
+
+# SES outputs
+output "ses_email_from_address" {
+  description = "Email sender address configured for Langfuse when SES is enabled"
+  value       = var.enable_ses ? local.ses_email_from : null
+}
+
+output "ses_domain_identity_arn" {
+  description = "SES domain identity ARN"
+  value       = var.enable_ses ? aws_ses_domain_identity.this[0].arn : null
+}
+
+output "ses_dkim_tokens" {
+  description = "SES DKIM tokens"
+  value       = var.enable_ses ? aws_ses_domain_dkim.this[0].dkim_tokens : []
+}
+
+output "ses_mail_from_domain" {
+  description = "SES custom MAIL FROM domain"
+  value       = var.enable_ses ? local.ses_mail_from_domain : null
+}
+
+output "ses_smtp_vpc_endpoint_id" {
+  description = "SES SMTP VPC Endpoint ID"
+  value       = var.enable_ses && var.create_ses_smtp_vpc_endpoint ? aws_vpc_endpoint.ses_smtp[0].id : null
+}

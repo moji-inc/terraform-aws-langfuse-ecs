@@ -12,7 +12,7 @@ override.tf.json
 *_override.tf.json
 *.tfvars
 *.tfvars.json
-!example.tfvars
+!tfvars/example.tfvars
 
 # OS
 .DS_Store

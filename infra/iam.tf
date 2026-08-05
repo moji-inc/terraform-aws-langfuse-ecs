@@ -2,6 +2,8 @@
 # GitHub Actions OIDC 認証
 # =============================================================================
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -21,11 +23,9 @@ resource "aws_iam_role" "github_actions" {
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
-          }
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
           }
         }
       }
@@ -42,12 +42,14 @@ resource "aws_iam_role_policy" "github_actions" {
     Statement = [
       # ECR ログイン
       {
+        Sid      = "EcrAuthentication"
         Effect   = "Allow"
-        Action   = ["ecr:GetAuthorizationToken"]
+        Action   = "ecr:GetAuthorizationToken"
         Resource = "*"
       },
       # ECR イメージプッシュ（web / worker / clickhouse）
       {
+        Sid    = "ProductionEcrRepositories"
         Effect = "Allow"
         Action = [
           "ecr:BatchCheckLayerAvailability",
@@ -64,22 +66,35 @@ resource "aws_iam_role_policy" "github_actions" {
           aws_ecr_repository.clickhouse.arn,
         ]
       },
-      # ECS タスク定義の更新とサービスのデプロイ
+      # ECS タスク定義の登録
       {
+        Sid    = "TaskDefinitionManagement"
         Effect = "Allow"
         Action = [
           "ecs:DescribeTaskDefinition",
           "ecs:RegisterTaskDefinition",
           "ecs:TagResource",
-          "ecs:UpdateService",
-          "ecs:DescribeServices",
         ]
         Resource = "*"
       },
+      # 本番 ECS サービスのデプロイ
+      {
+        Sid    = "ProductionServiceDeployment"
+        Effect = "Allow"
+        Action = [
+          "ecs:UpdateService",
+          "ecs:DescribeServices",
+        ]
+        Resource = [
+          "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${module.langfuse.cluster_name}/${module.langfuse.web_service_name}",
+          "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${module.langfuse.cluster_name}/${module.langfuse.worker_service_name}",
+        ]
+      },
       # ECS ロールの PassRole（タスク定義登録時に execution_role と task_role の両方が必要）
       {
+        Sid    = "PassProductionTaskRoles"
         Effect = "Allow"
-        Action = ["iam:PassRole"]
+        Action = "iam:PassRole"
         Resource = [
           aws_iam_role.ecs_task_execution.arn,
           aws_iam_role.ecs_task.arn,
@@ -125,13 +140,21 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = [
-          aws_secretsmanager_secret.database_url.arn,
-          aws_secretsmanager_secret.nextauth_secret.arn,
-          aws_secretsmanager_secret.salt.arn,
-          aws_secretsmanager_secret.encryption_key.arn,
-          aws_secretsmanager_secret.clickhouse_password.arn
-        ]
+        Resource = concat(
+          [
+            aws_secretsmanager_secret.database_url.arn,
+            aws_secretsmanager_secret.nextauth_secret.arn,
+            aws_secretsmanager_secret.salt.arn,
+            aws_secretsmanager_secret.encryption_key.arn,
+            aws_secretsmanager_secret.clickhouse_password.arn,
+            aws_secretsmanager_secret.slack_client_id.arn,
+            aws_secretsmanager_secret.slack_client_secret.arn,
+            aws_secretsmanager_secret.slack_state_secret.arn
+          ],
+          var.enable_ses && local.ses_smtp_secret_arn != null && local.ses_smtp_secret_arn != "" ? [
+            local.ses_smtp_secret_arn
+          ] : []
+        )
       }
     ]
   })

@@ -108,26 +108,6 @@ resource "aws_security_group" "clickhouse" {
   description = "Security group for ClickHouse"
   vpc_id      = local.vpc_id
 
-  # Ingress: HTTP interface for analytics queries
-  # Used by Web (dashboard queries) and Worker (data aggregation)
-  ingress {
-    description     = "ClickHouse HTTP from Web/Worker"
-    from_port       = 8123
-    to_port         = 8123
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web.id, aws_security_group.worker.id]
-  }
-
-  # Ingress: Native TCP protocol for high-performance data operations
-  # Used primarily by Worker for bulk trace data ingestion
-  ingress {
-    description     = "ClickHouse TCP from Web/Worker"
-    from_port       = 9000
-    to_port         = 9000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web.id, aws_security_group.worker.id]
-  }
-
   # Egress: Allow all outbound traffic
   # Required for: EFS mount (port 2049), ECR image pull, CloudWatch logs
   egress {
@@ -140,6 +120,7 @@ resource "aws_security_group" "clickhouse" {
   tags = {
     Name = "${var.service_name}-clickhouse"
   }
+
 }
 
 # =============================================================================
@@ -161,22 +142,86 @@ resource "aws_security_group" "rds" {
   description = "Security group for RDS PostgreSQL"
   vpc_id      = local.vpc_id
 
-  # Ingress: PostgreSQL access from Langfuse services only
-  # No direct external access - all queries go through Web/Worker
-  ingress {
-    description     = "PostgreSQL from Web/Worker"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web.id, aws_security_group.worker.id]
-  }
-
   # Note: No egress rules defined. AWS creates default allow-all egress,
   # but RDS managed service does not require outbound connectivity for normal operation.
 
   tags = {
     Name = "${var.service_name}-rds"
   }
+
+}
+
+locals {
+  production_app_security_groups = {
+    web    = aws_security_group.web.id
+    worker = aws_security_group.worker.id
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "clickhouse_http_from_app" {
+  for_each = local.production_app_security_groups
+
+  security_group_id            = aws_security_group.clickhouse.id
+  referenced_security_group_id = each.value
+  description                  = "ClickHouse HTTP from Web/Worker"
+  from_port                    = 8123
+  to_port                      = 8123
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "clickhouse_native_from_app" {
+  for_each = local.production_app_security_groups
+
+  security_group_id            = aws_security_group.clickhouse.id
+  referenced_security_group_id = each.value
+  description                  = "ClickHouse TCP from Web/Worker"
+  from_port                    = 9000
+  to_port                      = 9000
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_from_app" {
+  for_each = local.production_app_security_groups
+
+  security_group_id            = aws_security_group.rds.id
+  referenced_security_group_id = each.value
+  description                  = "PostgreSQL from Web/Worker"
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+# Import the existing production rules when this refactor is first applied.
+# Keeping the imports in configuration makes the migration non-destructive and
+# avoids a period where database ingress is revoked and recreated.
+import {
+  for_each = {
+    web    = "sgr-0c9c3a427eae9509d"
+    worker = "sgr-0b7930fa125f46bea"
+  }
+
+  to = aws_vpc_security_group_ingress_rule.clickhouse_http_from_app[each.key]
+  id = each.value
+}
+
+import {
+  for_each = {
+    web    = "sgr-084a198ccb18ccbbd"
+    worker = "sgr-04315a2d90899166d"
+  }
+
+  to = aws_vpc_security_group_ingress_rule.clickhouse_native_from_app[each.key]
+  id = each.value
+}
+
+import {
+  for_each = {
+    web    = "sgr-07681213f3249a87d"
+    worker = "sgr-0305285822309da23"
+  }
+
+  to = aws_vpc_security_group_ingress_rule.rds_from_app[each.key]
+  id = each.value
 }
 
 # =============================================================================

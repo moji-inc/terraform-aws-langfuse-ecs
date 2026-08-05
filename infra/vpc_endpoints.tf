@@ -101,3 +101,52 @@ resource "aws_vpc_endpoint" "secretsmanager" {
     Name = "${var.service_name}-secretsmanager-endpoint"
   }
 }
+
+# =============================================================================
+# SES SMTP Endpoint
+# =============================================================================
+# ECS web/worker tasks run in private subnets when ALB is enabled. SES SMTP is
+# reached through PrivateLink to keep the no-NAT design intact.
+
+resource "aws_security_group" "ses_smtp_vpc_endpoint" {
+  count = var.enable_ses && var.create_ses_smtp_vpc_endpoint ? 1 : 0
+
+  name        = "${var.service_name}-ses-smtp-endpoint"
+  description = "Allow Langfuse ECS tasks to reach SES SMTP endpoint"
+  vpc_id      = local.vpc_id
+
+  ingress {
+    description     = "Langfuse ECS SMTP access"
+    from_port       = local.ses_smtp_port
+    to_port         = local.ses_smtp_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.web.id, aws_security_group.worker.id]
+  }
+
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.service_name}-ses-smtp-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ses_smtp" {
+  count = var.enable_ses && var.create_ses_smtp_vpc_endpoint ? 1 : 0
+
+  vpc_id              = local.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.email-smtp"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = var.ses_smtp_vpc_endpoint_subnet_ids != null ? var.ses_smtp_vpc_endpoint_subnet_ids : local.private_subnet_ids
+  security_group_ids  = [aws_security_group.ses_smtp_vpc_endpoint[0].id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${var.service_name}-ses-smtp"
+  }
+}

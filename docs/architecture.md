@@ -11,7 +11,7 @@ Provisioned via Infrastructure as Code (IaC) using Terraform.
 - Auto-create VPC or use existing VPC
 - Access control via Security Group IP restrictions
 - HTTPS support via ALB + ACM certificate (optional)
-- No NAT Gateway; use VPC Endpoints for AWS service access
+- No NAT Gateway by default; use VPC Endpoints for AWS service access, with optional NAT Gateway for external API egress
 - Container images from ECR (must be pushed beforehand)
 - ARM64 (Graviton) for cost efficiency
 - Prioritize simple configuration
@@ -31,6 +31,7 @@ Internet
 |                                                      |
 |  Public Subnet                                       |
 |  +- ECS Service: Langfuse Web (Public IP, single task)|
+|  +- NAT Gateway (optional, external API egress)      |
 |                                                      |
 |  Private Subnets                                     |
 |  +- ECS Service: Langfuse Worker (scalable)          |
@@ -53,6 +54,7 @@ Internet
 |                                                      |
 |  Public Subnet                                       |
 |  +- ALB (Application Load Balancer)                  |
+|  +- NAT Gateway (optional, external API egress)      |
 |                                                      |
 |  Private Subnets                                     |
 |  +- ECS Service: Langfuse Web (behind ALB)           |
@@ -108,9 +110,9 @@ Internet
 
 - Accessed via VPC Gateway Endpoint
 
-### VPC Endpoints (No NAT Gateway)
+### VPC Endpoints and Optional NAT Gateway
 
-Private subnets use VPC Endpoints instead of NAT Gateway for AWS service access:
+By default, private subnets use VPC Endpoints instead of NAT Gateway for AWS service access:
 
 | Endpoint | Type | Purpose |
 |---|---|---|
@@ -119,6 +121,8 @@ Private subnets use VPC Endpoints instead of NAT Gateway for AWS service access:
 | CloudWatch Logs | Interface | Log delivery from ECS tasks |
 | Secrets Manager | Interface | Secret retrieval for ECS tasks |
 | S3 | Gateway | Blob storage access (no additional cost) |
+
+If private workloads need outbound internet access, such as Langfuse Worker calling external LLM APIs for LLM-as-a-Judge evaluators, set `enable_nat_gateway = true`. NAT Gateway creation only applies when this module creates the VPC; existing VPC users must provide their own NAT/routing.
 
 ---
 
@@ -306,6 +310,8 @@ resource "aws_ecs_service" "clickhouse" {
 | `LANGFUSE_S3_EVENT_UPLOAD_BUCKET` | Variable | S3 bucket name |
 | `LANGFUSE_S3_EVENT_UPLOAD_REGION` | Variable | AWS region |
 | `HOSTNAME` | Fixed | `0.0.0.0` |
+| `EMAIL_FROM_ADDRESS` | Variable | Sender email address for invitation and password reset emails |
+| `SMTP_CONNECTION_URL` | Secrets Manager | SES SMTP connection URL |
 
 - S3 access uses IAM role (ECS task role), no access keys required
 
@@ -341,11 +347,16 @@ infra/
 | `public_subnet_ids` | `list(string)` | Public Subnet IDs (required if vpc_id set) |
 | `private_subnet_ids` | `list(string)` | Private Subnet IDs (required if vpc_id set) |
 | `vpc_cidr` | `string` | CIDR for auto-created VPC (default: `10.0.0.0/16`) |
+| `enable_nat_gateway` | `bool` | Add a NAT Gateway for private subnet outbound internet access (default: `false`, auto-created VPC only) |
 | `allowed_cidrs` | `list(string)` | Allowed CIDR list for access |
 | `allowed_security_group_ids` | `list(string)` | Security group IDs allowed to access ALB via HTTPS only (for internal AWS services tracing, default: `[]`) |
 | `langfuse_web_image` | `string` | ECR image URL for Langfuse Web |
 | `langfuse_worker_image` | `string` | ECR image URL for Langfuse Worker |
 | `clickhouse_image` | `string` | ECR image URL for ClickHouse |
+| `enable_ses` | `bool` | Enable SES SMTP email sending (default: `false`) |
+| `ses_domain_name` | `string` | Sender domain to verify in SES |
+| `ses_email_from_address` | `string` | Sender email address; the app adds the `ai-eval` display name |
+| `smtp_connection_url_secret_arn` | `string` | Secrets Manager ARN when using existing SMTP credentials |
 | `db_instance_class` | `string` | RDS instance class (default: `db.t4g.micro`) |
 | `db_name` | `string` | Database name (default: `langfuse`, no hyphens allowed) |
 | `cache_node_type` | `string` | ElastiCache node type (default: `cache.t4g.micro`) |

@@ -55,6 +55,10 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "CLICKHOUSE_USER"
           value = "default"
+        },
+        {
+          name  = "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT"
+          value = "1"
         }
       ]
 
@@ -104,7 +108,7 @@ resource "aws_ecs_service" "main" {
   # ClickHouse is a stateful singleton backed by EFS.
   # During deployment, prevent old+new tasks from running concurrently.
   # If the new task fails to start, rollback to the previous stable task definition.
-  deployment_maximum_percent          = 100
+  deployment_maximum_percent         = 100
   deployment_minimum_healthy_percent = 0
 
   deployment_circuit_breaker {

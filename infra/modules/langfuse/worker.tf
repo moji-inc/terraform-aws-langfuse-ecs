@@ -25,6 +25,10 @@ resource "aws_ecs_task_definition" "worker" {
       name  = "langfuse-worker"
       image = var.worker_image
 
+      mountPoints    = []
+      systemControls = []
+      volumesFrom    = []
+
       portMappings = [
         {
           containerPort = 3030
@@ -50,6 +54,11 @@ resource "aws_ecs_task_definition" "worker" {
     }
   ])
 
+  # GitHub Actions owns the deployed image and task-definition revision.
+  lifecycle {
+    ignore_changes = [container_definitions]
+  }
+
   tags = {
     Name = "${var.service_name}-worker"
   }
@@ -67,6 +76,11 @@ resource "aws_ecs_service" "worker" {
     subnets          = var.private_subnet_ids
     security_groups  = [var.worker_security_group_id]
     assign_public_ip = false
+  }
+
+  # GitHub Actions promotes task definitions; autoscaling/operator changes own capacity.
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
   }
 
   tags = {
