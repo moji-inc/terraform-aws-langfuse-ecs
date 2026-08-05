@@ -16,6 +16,14 @@ Langfuse deployment.
 - Staging configuration: `staging/` with state key
   `langfuse-staging/terraform.tfstate`
 - Staging ECS services: `langfuse-stg-web`, `langfuse-stg-worker`
+- The production GitHub Actions role is assumable only through the GitHub
+  `production` Environment and can update only `langfuse-web` and
+  `langfuse-worker`. Keep the staging role equivalently scoped to its own
+  Environment and services.
+- GitHub Actions owns deployed ECS task-definition contents and service
+  revisions. Terraform owns the surrounding ECS, networking, secrets, ECR, and
+  IAM resources and intentionally ignores deployment-managed task definitions
+  and desired counts.
 - Staging reuses the production VPC, ALB, RDS instance, and ClickHouse service,
   while using dedicated application security groups, a dedicated single-node
   Valkey cache, a database-scoped ClickHouse user, and separate PostgreSQL /

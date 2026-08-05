@@ -59,6 +59,11 @@ resource "aws_ecs_task_definition" "web" {
     }
   ])
 
+  # GitHub Actions owns the deployed image and task-definition revision.
+  lifecycle {
+    ignore_changes = [container_definitions]
+  }
+
   tags = {
     Name = "${var.service_name}-web"
   }
@@ -87,6 +92,11 @@ resource "aws_ecs_service" "web" {
       container_name   = "langfuse-web"
       container_port   = 3000
     }
+  }
+
+  # GitHub Actions promotes task definitions; autoscaling/operator changes own capacity.
+  lifecycle {
+    ignore_changes = [task_definition, desired_count]
   }
 
   tags = {
