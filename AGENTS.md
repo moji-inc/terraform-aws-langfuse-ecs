@@ -12,24 +12,14 @@ Langfuse deployment.
 - Default ECS cluster: `langfuse`
 - Default ECS services: `langfuse-web`, `langfuse-worker`
 - Current local production tfvars: `tfvars/prod.tfvars`
-- Staging URL: `https://stg.ai-eval.jp`
-- Staging configuration: `staging/` with state key
-  `langfuse-staging/terraform.tfstate`
-- Staging ECS services: `langfuse-stg-web`, `langfuse-stg-worker`
 - The production GitHub Actions role is assumable only through the GitHub
   `production` Environment and can update only `langfuse-web` and
-  `langfuse-worker`. Keep the staging role equivalently scoped to its own
-  Environment and services.
+  `langfuse-worker`.
+- There is no staging environment; `main` deploys directly to production.
 - GitHub Actions owns deployed ECS task-definition contents and service
   revisions. Terraform owns the surrounding ECS, networking, secrets, ECR, and
   IAM resources and intentionally ignores deployment-managed task definitions
   and desired counts.
-- Staging reuses the production VPC, ALB, RDS instance, and ClickHouse service,
-  while using dedicated application security groups, a dedicated single-node
-  Valkey cache, a database-scoped ClickHouse user, and separate PostgreSQL /
-  ClickHouse databases, S3, secrets, ECR, and ECS services. Read
-  `staging/README.md` before changing or operating it.
-
 Do not infer this deployment is Langfuse Cloud US/EU/HIPAA or AWS US East from
 upstream Langfuse examples. README examples should use Tokyo-region values unless
 they explicitly describe a provider-specific global requirement.
