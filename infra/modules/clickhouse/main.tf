@@ -55,10 +55,6 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "CLICKHOUSE_USER"
           value = "default"
-        },
-        {
-          name  = "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT"
-          value = "1"
         }
       ]
 
