@@ -77,6 +77,10 @@ resource "aws_ecs_service" "web" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  # Web runs Postgres and ClickHouse migrations before serving; at 0.5 vCPU this
+  # takes about two minutes, longer than the ALB marks a new target unhealthy.
+  health_check_grace_period_seconds = var.enable_alb ? 300 : null
+
   network_configuration {
     # When ALB is enabled, place in private subnets; otherwise public subnets with public IP
     subnets          = var.enable_alb ? var.private_subnet_ids : var.public_subnet_ids
