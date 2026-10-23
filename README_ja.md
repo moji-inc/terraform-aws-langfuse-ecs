@@ -302,12 +302,13 @@ terraform apply -var-file=../tfvars/prod.tfvars
 | `db_instance_class` | RDS インスタンスクラス | `db.t4g.micro` |
 | `db_multi_az` | RDS Multi-AZ 有効化 | `false` |
 | `cache_node_type` | ElastiCache ノードタイプ | `cache.t4g.micro` |
-| `web_cpu` | Web タスク CPU | `1024` |
+| `enable_container_insights` | ECS クラスタで CloudWatch Container Insights を有効化（カスタムメトリクスとして課金） | `false` |
+| `web_cpu` | Web タスク CPU | `512` |
 | `web_memory` | Web タスク メモリ (MB) | `2048` |
 | `worker_desired_count` | Worker タスク数 | `1` |
-| `worker_cpu` | Worker タスク CPU | `1024` |
-| `worker_memory` | Worker タスク メモリ (MB) | `2048` |
-| `clickhouse_cpu` | ClickHouse タスク CPU | `2048` |
+| `worker_cpu` | Worker タスク CPU | `512` |
+| `worker_memory` | Worker タスク メモリ (MB) | `1024` |
+| `clickhouse_cpu` | ClickHouse タスク CPU | `1024` |
 | `clickhouse_memory` | ClickHouse タスク メモリ (MB) | `4096` |
 | `enable_alb` | ALB を有効化（HTTPS アクセス） | `true` |
 | `certificate_arn` | ACM 証明書 ARN（未指定時は自己署名証明書） | `""` |

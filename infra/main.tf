@@ -48,17 +48,18 @@ module "rds" {
 module "langfuse" {
   source = "./modules/langfuse"
 
-  service_name             = var.service_name
-  aws_region               = var.aws_region
-  ecs_cpu_architecture     = var.ecs_cpu_architecture
-  vpc_id                   = local.vpc_id
-  public_subnet_ids        = local.public_subnet_ids
-  private_subnet_ids       = local.private_subnet_ids
-  web_security_group_id    = aws_security_group.web.id
-  worker_security_group_id = aws_security_group.worker.id
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
-  task_role_id             = aws_iam_role.ecs_task.id
+  service_name              = var.service_name
+  aws_region                = var.aws_region
+  ecs_cpu_architecture      = var.ecs_cpu_architecture
+  enable_container_insights = var.enable_container_insights
+  vpc_id                    = local.vpc_id
+  public_subnet_ids         = local.public_subnet_ids
+  private_subnet_ids        = local.private_subnet_ids
+  web_security_group_id     = aws_security_group.web.id
+  worker_security_group_id  = aws_security_group.worker.id
+  execution_role_arn        = aws_iam_role.ecs_task_execution.arn
+  task_role_arn             = aws_iam_role.ecs_task.arn
+  task_role_id              = aws_iam_role.ecs_task.id
 
   web_image            = local.resolved_web_image
   worker_image         = local.resolved_worker_image

@@ -122,7 +122,7 @@ By default, private subnets use VPC Endpoints instead of NAT Gateway for AWS ser
 | Secrets Manager | Interface | Secret retrieval for ECS tasks |
 | S3 | Gateway | Blob storage access (no additional cost) |
 
-If private workloads need outbound internet access, such as Langfuse Worker calling external LLM APIs for LLM-as-a-Judge evaluators, set `enable_nat_gateway = true`. NAT Gateway creation only applies when this module creates the VPC; existing VPC users must provide their own NAT/routing.
+If private workloads need outbound internet access, such as Langfuse Worker calling external LLM APIs for LLM-as-a-Judge evaluators, set `enable_nat_gateway = true`. NAT Gateway creation only applies when this module creates the VPC; existing VPC users must provide their own NAT/routing. When this module creates the NAT Gateway, the Interface endpoints above (and the SES SMTP endpoint unless `create_ses_smtp_vpc_endpoint = true`) are not created, because AWS API traffic goes through the NAT Gateway; the S3 Gateway endpoint is kept.
 
 ---
 
@@ -360,12 +360,12 @@ infra/
 | `db_instance_class` | `string` | RDS instance class (default: `db.t4g.micro`) |
 | `db_name` | `string` | Database name (default: `langfuse`, no hyphens allowed) |
 | `cache_node_type` | `string` | ElastiCache node type (default: `cache.t4g.micro`) |
-| `web_cpu` | `number` | Web task CPU (default: `1024` = 1 vCPU) |
+| `web_cpu` | `number` | Web task CPU (default: `512` = 0.5 vCPU) |
 | `web_memory` | `number` | Web task memory (default: `2048` = 2 GB) |
 | `worker_desired_count` | `number` | Langfuse Worker task count (default: `1`) |
-| `worker_cpu` | `number` | Worker task CPU (default: `1024`) |
-| `worker_memory` | `number` | Worker task memory (default: `2048`) |
-| `clickhouse_cpu` | `number` | ClickHouse task CPU (default: `2048` = 2 vCPU) |
+| `worker_cpu` | `number` | Worker task CPU (default: `512`) |
+| `worker_memory` | `number` | Worker task memory (default: `1024`) |
+| `clickhouse_cpu` | `number` | ClickHouse task CPU (default: `1024` = 1 vCPU) |
 | `clickhouse_memory` | `number` | ClickHouse task memory (default: `4096` = 4 GB) |
 | `enable_alb` | `bool` | Enable ALB for HTTPS access (default: `true`) |
 | `certificate_arn` | `string` | ACM certificate ARN for HTTPS. If empty, self-signed certificate is used. |

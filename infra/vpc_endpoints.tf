@@ -2,7 +2,8 @@
 # VPC Endpoints
 # =============================================================================
 # Interface endpoints for ECS Fargate tasks in private subnets to access
-# AWS services without NAT Gateway.
+# AWS services without NAT Gateway. They are skipped when this module creates
+# a NAT Gateway, because private subnets already reach AWS APIs through it.
 #
 # Required endpoints:
 #   - ECR API: Container image metadata
@@ -13,8 +14,14 @@
 # Note: S3 Gateway Endpoint is defined in modules/langfuse/s3.tf
 # =============================================================================
 
+locals {
+  create_interface_endpoints = !local.enable_nat
+}
+
 # Security Group for VPC Endpoints
 resource "aws_security_group" "vpc_endpoints" {
+  count = local.create_interface_endpoints ? 1 : 0
+
   name        = "${var.service_name}-vpc-endpoints"
   description = "Security group for VPC Endpoints"
   vpc_id      = local.vpc_id
@@ -42,11 +49,13 @@ data "aws_vpc" "existing" {
 # ECR API Endpoint
 # =============================================================================
 resource "aws_vpc_endpoint" "ecr_api" {
+  count = local.create_interface_endpoints ? 1 : 0
+
   vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.private_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = {
@@ -58,11 +67,13 @@ resource "aws_vpc_endpoint" "ecr_api" {
 # ECR DKR Endpoint (Docker Registry)
 # =============================================================================
 resource "aws_vpc_endpoint" "ecr_dkr" {
+  count = local.create_interface_endpoints ? 1 : 0
+
   vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.private_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = {
@@ -74,11 +85,13 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
 # CloudWatch Logs Endpoint
 # =============================================================================
 resource "aws_vpc_endpoint" "logs" {
+  count = local.create_interface_endpoints ? 1 : 0
+
   vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.logs"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.private_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = {
@@ -90,11 +103,13 @@ resource "aws_vpc_endpoint" "logs" {
 # Secrets Manager Endpoint
 # =============================================================================
 resource "aws_vpc_endpoint" "secretsmanager" {
+  count = local.create_interface_endpoints ? 1 : 0
+
   vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.secretsmanager"
   vpc_endpoint_type   = "Interface"
   subnet_ids          = local.private_subnet_ids
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = {
@@ -106,10 +121,15 @@ resource "aws_vpc_endpoint" "secretsmanager" {
 # SES SMTP Endpoint
 # =============================================================================
 # ECS web/worker tasks run in private subnets when ALB is enabled. SES SMTP is
-# reached through PrivateLink to keep the no-NAT design intact.
+# reached through PrivateLink to keep the no-NAT design intact. With a NAT
+# Gateway, SMTP goes out through it unless the endpoint is explicitly requested.
+
+locals {
+  create_ses_smtp_vpc_endpoint = var.enable_ses && coalesce(var.create_ses_smtp_vpc_endpoint, !local.enable_nat)
+}
 
 resource "aws_security_group" "ses_smtp_vpc_endpoint" {
-  count = var.enable_ses && var.create_ses_smtp_vpc_endpoint ? 1 : 0
+  count = local.create_ses_smtp_vpc_endpoint ? 1 : 0
 
   name        = "${var.service_name}-ses-smtp-endpoint"
   description = "Allow Langfuse ECS tasks to reach SES SMTP endpoint"
@@ -137,7 +157,7 @@ resource "aws_security_group" "ses_smtp_vpc_endpoint" {
 }
 
 resource "aws_vpc_endpoint" "ses_smtp" {
-  count = var.enable_ses && var.create_ses_smtp_vpc_endpoint ? 1 : 0
+  count = local.create_ses_smtp_vpc_endpoint ? 1 : 0
 
   vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.email-smtp"

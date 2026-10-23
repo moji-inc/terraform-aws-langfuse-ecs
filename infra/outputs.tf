@@ -107,5 +107,5 @@ output "ses_mail_from_domain" {
 
 output "ses_smtp_vpc_endpoint_id" {
   description = "SES SMTP VPC Endpoint ID"
-  value       = var.enable_ses && var.create_ses_smtp_vpc_endpoint ? aws_vpc_endpoint.ses_smtp[0].id : null
+  value       = local.create_ses_smtp_vpc_endpoint ? aws_vpc_endpoint.ses_smtp[0].id : null
 }
