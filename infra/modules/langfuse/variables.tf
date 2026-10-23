@@ -68,6 +68,11 @@ variable "worker_image" {
 }
 
 # Resource configuration
+variable "enable_container_insights" {
+  description = "Enable CloudWatch Container Insights on the ECS cluster"
+  type        = bool
+}
+
 variable "web_cpu" {
   description = "Web task CPU"
   type        = number

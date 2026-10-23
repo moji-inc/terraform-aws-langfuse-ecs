@@ -306,12 +306,13 @@ terraform apply -var-file=../tfvars/prod.tfvars
 | `db_instance_class` | RDS instance class | `db.t4g.micro` |
 | `db_multi_az` | Enable RDS Multi-AZ | `false` |
 | `cache_node_type` | ElastiCache node type | `cache.t4g.micro` |
-| `web_cpu` | Web task CPU | `1024` |
+| `enable_container_insights` | Enable CloudWatch Container Insights on the ECS cluster (billed as custom metrics) | `false` |
+| `web_cpu` | Web task CPU | `512` |
 | `web_memory` | Web task memory (MB) | `2048` |
 | `worker_desired_count` | Worker task count | `1` |
-| `worker_cpu` | Worker task CPU | `1024` |
-| `worker_memory` | Worker task memory (MB) | `2048` |
-| `clickhouse_cpu` | ClickHouse task CPU | `2048` |
+| `worker_cpu` | Worker task CPU | `512` |
+| `worker_memory` | Worker task memory (MB) | `1024` |
+| `clickhouse_cpu` | ClickHouse task CPU | `1024` |
 | `clickhouse_memory` | ClickHouse task memory (MB) | `4096` |
 | `enable_alb` | Enable ALB for HTTPS | `true` |
 | `certificate_arn` | ACM certificate ARN (self-signed if empty) | `""` |

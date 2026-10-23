@@ -122,7 +122,7 @@ Internet
 | Secrets Manager | Interface | ECS タスクのシークレット取得 |
 | S3 | Gateway | Blob ストレージアクセス（追加コストなし） |
 
-Langfuse Worker が LLM-as-a-Judge evaluator で OpenAI / Anthropic など外部 LLM API を呼び出す場合は、`enable_nat_gateway = true` を設定する。この NAT Gateway 作成は、この module が VPC を作成する場合のみ有効。既存 VPC 利用時は既存 VPC 側で NAT / routing を用意する。
+Langfuse Worker が LLM-as-a-Judge evaluator で OpenAI / Anthropic など外部 LLM API を呼び出す場合は、`enable_nat_gateway = true` を設定する。この NAT Gateway 作成は、この module が VPC を作成する場合のみ有効。既存 VPC 利用時は既存 VPC 側で NAT / routing を用意する。この module が NAT Gateway を作成する場合、AWS API への通信は NAT Gateway を通るため、上記の Interface Endpoint（および `create_ses_smtp_vpc_endpoint = true` を指定しない限り SES SMTP Endpoint）は作成しない。S3 Gateway Endpoint は残す。
 
 ---
 
@@ -360,12 +360,12 @@ infra/
 | `db_instance_class` | `string` | RDS インスタンスクラス (default: `db.t4g.micro`) |
 | `db_name` | `string` | データベース名 (default: `langfuse`, ハイフン不可) |
 | `cache_node_type` | `string` | ElastiCache ノードタイプ (default: `cache.t4g.micro`) |
-| `web_cpu` | `number` | Web タスク CPU (default: `1024` = 1 vCPU) |
+| `web_cpu` | `number` | Web タスク CPU (default: `512` = 0.5 vCPU) |
 | `web_memory` | `number` | Web タスク メモリ (default: `2048` = 2 GB) |
 | `worker_desired_count` | `number` | Langfuse Worker タスク数 (default: `1`) |
-| `worker_cpu` | `number` | Worker タスク CPU (default: `1024`) |
-| `worker_memory` | `number` | Worker タスク メモリ (default: `2048`) |
-| `clickhouse_cpu` | `number` | ClickHouse タスク CPU (default: `2048` = 2 vCPU) |
+| `worker_cpu` | `number` | Worker タスク CPU (default: `512`) |
+| `worker_memory` | `number` | Worker タスク メモリ (default: `1024`) |
+| `clickhouse_cpu` | `number` | ClickHouse タスク CPU (default: `1024` = 1 vCPU) |
 | `clickhouse_memory` | `number` | ClickHouse タスク メモリ (default: `4096` = 4 GB) |
 | `enable_alb` | `bool` | ALB を有効化して HTTPS アクセス (default: `true`) |
 | `certificate_arn` | `string` | HTTPS 用 ACM 証明書 ARN。未指定時は自己署名証明書を自動生成。 |

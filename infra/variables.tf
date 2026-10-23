@@ -98,11 +98,18 @@ variable "cache_node_type" {
   default     = "cache.t4g.micro"
 }
 
+# ECS
+variable "enable_container_insights" {
+  description = "Enable CloudWatch Container Insights on the ECS cluster (billed as custom metrics)."
+  type        = bool
+  default     = false
+}
+
 # ECS - Web
 variable "web_cpu" {
   description = "Web task CPU (1024 = 1 vCPU)"
   type        = number
-  default     = 1024
+  default     = 512
 }
 
 variable "web_memory" {
@@ -121,20 +128,20 @@ variable "worker_desired_count" {
 variable "worker_cpu" {
   description = "Worker task CPU (1024 = 1 vCPU)"
   type        = number
-  default     = 1024
+  default     = 512
 }
 
 variable "worker_memory" {
   description = "Worker task memory in MB"
   type        = number
-  default     = 2048
+  default     = 1024
 }
 
 # ECS - ClickHouse
 variable "clickhouse_cpu" {
   description = "ClickHouse task CPU (1024 = 1 vCPU)"
   type        = number
-  default     = 2048
+  default     = 1024
 }
 
 variable "clickhouse_memory" {
@@ -286,9 +293,9 @@ variable "ses_dkim_domain_suffix" {
 }
 
 variable "create_ses_smtp_vpc_endpoint" {
-  description = "Create an Interface VPC Endpoint for SES SMTP access from private ECS tasks."
+  description = "Create an Interface VPC Endpoint for SES SMTP access from private ECS tasks. Defaults to true only when this module does not create a NAT Gateway."
   type        = bool
-  default     = true
+  default     = null
 }
 
 variable "ses_smtp_vpc_endpoint_subnet_ids" {
